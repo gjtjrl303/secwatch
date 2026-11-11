@@ -58,6 +58,7 @@ class ServiceControllerTest : MySqlIntegrationTest() {
     fun domain_with_scheme_is_400() {
         register("x", "https://mokkoji.kr")
             .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value(40001))
             .andExpect(jsonPath("$.message").value("올바른 도메인을 입력해주세요."))
     }
 
@@ -75,6 +76,7 @@ class ServiceControllerTest : MySqlIntegrationTest() {
         register("a", "mokkoji.kr").andExpect(status().isCreated)
         register("b", "mokkoji.kr")
             .andExpect(status().isConflict)
+            .andExpect(jsonPath("$.code").value(40901))
             .andExpect(jsonPath("$.message").value("이미 등록된 도메인입니다."))
     }
 
@@ -101,6 +103,7 @@ class ServiceControllerTest : MySqlIntegrationTest() {
     fun get_unknown_service_is_404() {
         mvc.perform(get("/api/services/999999"))
             .andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.code").value(40401))
             .andExpect(jsonPath("$.message").value("서비스를 찾을 수 없습니다."))
     }
 }

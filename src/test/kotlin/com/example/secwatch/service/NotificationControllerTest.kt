@@ -45,6 +45,7 @@ class NotificationControllerTest : MySqlIntegrationTest() {
     fun rejects_non_discord_url() {
         put(serviceId, "https://evil.example.com/api/webhooks/1/a")
             .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value(40002))
             .andExpect(jsonPath("$.message").value("디스코드 웹훅 주소를 확인해주세요."))
         assertThat(storedWebhook()).isNull()
     }

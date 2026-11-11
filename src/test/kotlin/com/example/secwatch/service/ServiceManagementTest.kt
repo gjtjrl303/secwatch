@@ -1,7 +1,7 @@
 package com.example.secwatch.service
 
-import com.example.secwatch.common.InvalidInputException
-import com.example.secwatch.common.NotFoundException
+import com.example.secwatch.common.ErrorCode
+import com.example.secwatch.common.SecwatchException
 import com.example.secwatch.support.MySqlIntegrationTest
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -42,10 +42,10 @@ class ServiceManagementTest : MySqlIntegrationTest() {
     }
 
     @Test
-    @DisplayName("없는 id로 찾으면 NotFoundException이 난다")
+    @DisplayName("없는 id로 찾으면 서비스를 찾을 수 없다는 오류가 난다")
     fun get_missing_service_fails() {
         assertThatThrownBy { management.get(serviceId + 999) }
-            .isInstanceOf(NotFoundException::class.java)
+            .isInstanceOfSatisfying(SecwatchException::class.java) { assertThat(it.errorCode).isEqualTo(ErrorCode.NOT_FOUND_SERVICE) }
             .hasMessage("서비스를 찾을 수 없습니다.")
     }
 
@@ -60,14 +60,14 @@ class ServiceManagementTest : MySqlIntegrationTest() {
     @DisplayName("디스코드 주소가 아니면 거부하고 저장하지 않는다")
     fun rejects_invalid_webhook() {
         assertThatThrownBy { management.changeWebhook(serviceId, "https://evil.example.com/api/webhooks/1/a") }
-            .isInstanceOf(InvalidInputException::class.java)
+            .isInstanceOfSatisfying(SecwatchException::class.java) { assertThat(it.errorCode).isEqualTo(ErrorCode.INVALID_WEBHOOK_URL) }
         assertThat(storedWebhook()).isNull()
     }
 
     @Test
-    @DisplayName("없는 서비스의 알림을 바꾸면 NotFoundException이 난다")
+    @DisplayName("없는 서비스의 알림을 바꾸면 서비스를 찾을 수 없다는 오류가 난다")
     fun change_webhook_of_missing_service_fails() {
         assertThatThrownBy { management.changeWebhook(serviceId + 999, "https://discord.com/api/webhooks/1/a") }
-            .isInstanceOf(NotFoundException::class.java)
+            .isInstanceOfSatisfying(SecwatchException::class.java) { assertThat(it.errorCode).isEqualTo(ErrorCode.NOT_FOUND_SERVICE) }
     }
 }

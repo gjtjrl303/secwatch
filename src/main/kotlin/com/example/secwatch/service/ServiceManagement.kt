@@ -1,6 +1,7 @@
 package com.example.secwatch.service
 
-import com.example.secwatch.common.NotFoundException
+import com.example.secwatch.common.ErrorCode
+import com.example.secwatch.common.SecwatchException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -12,7 +13,7 @@ class ServiceManagement(private val repository: MonitoredServiceRepository) {
 
     @Transactional(readOnly = true)
     fun get(id: Long): MonitoredService =
-        repository.findById(id).orElseThrow { NotFoundException("서비스를 찾을 수 없습니다.") }
+        repository.findById(id).orElseThrow { SecwatchException(ErrorCode.NOT_FOUND_SERVICE) }
 
     @Transactional
     fun changeWebhook(id: Long, rawUrl: String) {

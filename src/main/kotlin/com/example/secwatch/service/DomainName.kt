@@ -1,6 +1,7 @@
 package com.example.secwatch.service
 
-import com.example.secwatch.common.InvalidInputException
+import com.example.secwatch.common.ErrorCode
+import com.example.secwatch.common.SecwatchException
 
 object DomainName {
     private val PATTERN = Regex(
@@ -9,7 +10,7 @@ object DomainName {
 
     fun normalize(raw: String): String {
         val domain = raw.trim().lowercase()
-        if (!PATTERN.matches(domain)) throw InvalidInputException("올바른 도메인을 입력해주세요.")
+        if (!PATTERN.matches(domain)) throw SecwatchException(ErrorCode.INVALID_DOMAIN)
         return domain
     }
 }

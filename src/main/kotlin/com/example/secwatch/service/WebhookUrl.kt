@@ -1,6 +1,7 @@
 package com.example.secwatch.service
 
-import com.example.secwatch.common.InvalidInputException
+import com.example.secwatch.common.ErrorCode
+import com.example.secwatch.common.SecwatchException
 
 object WebhookUrl {
     private val PREFIXES = listOf(
@@ -11,7 +12,7 @@ object WebhookUrl {
     fun validate(raw: String): String {
         val url = raw.trim()
         val valid = PREFIXES.any { url.startsWith(it) && url.length > it.length } && url.none { it.isWhitespace() }
-        if (!valid) throw InvalidInputException("디스코드 웹훅 주소를 확인해주세요.")
+        if (!valid) throw SecwatchException(ErrorCode.INVALID_WEBHOOK_URL)
         return url
     }
 }

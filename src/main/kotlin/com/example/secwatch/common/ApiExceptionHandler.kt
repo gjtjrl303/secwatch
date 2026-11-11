@@ -1,26 +1,15 @@
 package com.example.secwatch.common
 
-import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.ExceptionHandler
+import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.bind.annotation.RestControllerAdvice
 
-data class ApiError(val message: String)
+data class ApiError(val code: Int, val message: String)
 
-@RestControllerAdvice(annotations = [org.springframework.web.bind.annotation.RestController::class])
+@RestControllerAdvice(annotations = [RestController::class])
 class ApiExceptionHandler {
-    @ExceptionHandler(InvalidInputException::class)
-    fun invalid(e: InvalidInputException) = respond(HttpStatus.BAD_REQUEST, e)
-
-    @ExceptionHandler(UnsupportedFormatException::class)
-    fun unsupported(e: UnsupportedFormatException) = respond(HttpStatus.BAD_REQUEST, e)
-
-    @ExceptionHandler(ConflictException::class)
-    fun conflict(e: ConflictException) = respond(HttpStatus.CONFLICT, e)
-
-    @ExceptionHandler(NotFoundException::class)
-    fun notFound(e: NotFoundException) = respond(HttpStatus.NOT_FOUND, e)
-
-    private fun respond(status: HttpStatus, e: RuntimeException): ResponseEntity<ApiError> =
-        ResponseEntity.status(status).body(ApiError(e.message ?: ""))
+    @ExceptionHandler(SecwatchException::class)
+    fun handle(e: SecwatchException): ResponseEntity<ApiError> =
+        ResponseEntity.status(e.errorCode.status).body(ApiError(e.errorCode.code, e.errorCode.message))
 }

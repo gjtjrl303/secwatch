@@ -1,6 +1,7 @@
 package com.example.secwatch.service
 
-import com.example.secwatch.common.ConflictException
+import com.example.secwatch.common.ErrorCode
+import com.example.secwatch.common.SecwatchException
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -11,7 +12,7 @@ class ServiceRegistration(private val repository: MonitoredServiceRepository) {
     @Transactional
     fun register(name: String, rawDomain: String): MonitoredService {
         val domain = DomainName.normalize(rawDomain)
-        val duplicate = ConflictException("이미 등록된 도메인입니다.")
+        val duplicate = SecwatchException(ErrorCode.DUPLICATE_DOMAIN)
         if (repository.existsByDomain(domain)) throw duplicate
         try {
             return repository.save(MonitoredService(name, domain))
