@@ -1,0 +1,25 @@
+# 로컬 개발용 MySQL. 실행: docker compose up -d --wait   종료: docker compose down (데이터까지 지우려면 -v)
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: secwatch-mysql
+    environment:
+      MYSQL_DATABASE: secwatch
+      MYSQL_USER: secwatch
+      MYSQL_PASSWORD: secwatch
+      MYSQL_ROOT_PASSWORD: root
+      TZ: Asia/Seoul
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_0900_ai_ci
+    ports:
+      # 이미 3306을 쓰는 MySQL과 겹치지 않도록 호스트 3307로 연다. 개발용 비밀번호라서 내 컴퓨터(127.0.0.1)에서만 접속되게 한다
+      - "127.0.0.1:3307:3306"
+    volumes:
+      - secwatch-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  secwatch-mysql-data:

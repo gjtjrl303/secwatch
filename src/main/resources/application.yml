@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    # 기본값은 docker-compose.yml 의 MySQL(호스트 3307). 다른 DB를 쓰려면 DB_URL, DB_USERNAME, DB_PASSWORD 환경변수로 바꾼다.
+    url: ${DB_URL:jdbc:mysql://localhost:3307/secwatch}
+    username: ${DB_USERNAME:secwatch}
+    password: ${DB_PASSWORD:secwatch}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+server:
+  tomcat:
+    # 실제 package-lock.json은 Tomcat 기본 폼 한도(2MB)를 자주 넘는다.
+    max-http-form-post-size: 20MB
