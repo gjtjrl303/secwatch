@@ -11,13 +11,23 @@ class ServiceRegistration(private val repository: MonitoredServiceRepository) {
 
     @Transactional
     fun register(name: String, rawDomain: String): MonitoredService {
+        val serviceName = name.trim()
+        if (serviceName.isEmpty() || serviceName.length > MAX_NAME_LENGTH) throw SecwatchException(ErrorCode.INVALID_NAME)
         val domain = DomainName.normalize(rawDomain)
-        val duplicate = SecwatchException(ErrorCode.DUPLICATE_DOMAIN)
-        if (repository.existsByDomain(domain)) throw duplicate
+        if (repository.existsByDomain(domain)) throw SecwatchException(ErrorCode.DUPLICATE_DOMAIN)
         try {
-            return repository.save(MonitoredService(name, domain))
+            return repository.save(MonitoredService(serviceName, domain))
         } catch (e: DataIntegrityViolationException) {
-            throw duplicate
+            if (!isDuplicateDomain(e)) throw e
+            throw SecwatchException(ErrorCode.DUPLICATE_DOMAIN, e)
         }
+    }
+
+    private fun isDuplicateDomain(e: Throwable): Boolean =
+        generateSequence(e) { it.cause }.any { it.message?.contains(DOMAIN_UNIQUE_KEY) == true }
+
+    private companion object {
+        const val MAX_NAME_LENGTH = 100
+        const val DOMAIN_UNIQUE_KEY = "uk_monitored_service_domain"
     }
 }

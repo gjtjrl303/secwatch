@@ -85,4 +85,14 @@ class NotificationControllerTest : MySqlIntegrationTest() {
             .andExpect(status().isNotFound)
             .andExpect(jsonPath("$.message").value("서비스를 찾을 수 없습니다."))
     }
+
+    @Test
+    @DisplayName("웹훅 주소가 500자를 넘으면 400을 돌려주고 500자는 받아들인다")
+    fun webhook_length_limit() {
+        val prefix = "https://discord.com/api/webhooks/"
+        put(serviceId, prefix + "a".repeat(468))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value(40002))
+        put(serviceId, prefix + "a".repeat(467)).andExpect(status().isNoContent)
+    }
 }

@@ -106,4 +106,55 @@ class ServiceControllerTest : MySqlIntegrationTest() {
             .andExpect(jsonPath("$.code").value(40401))
             .andExpect(jsonPath("$.message").value("서비스를 찾을 수 없습니다."))
     }
+
+    @Test
+    @DisplayName("JSON이 깨진 요청은 400과 공통 오류 형식을 돌려준다")
+    fun malformed_json_is_400() {
+        mvc.perform(post("/api/services").contentType(MediaType.APPLICATION_JSON).content("{broken"))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value(40000))
+            .andExpect(jsonPath("$.message").value("잘못된 요청입니다."))
+    }
+
+    @Test
+    @DisplayName("필수 필드가 빠진 요청은 400과 공통 오류 형식을 돌려준다")
+    fun missing_field_is_400() {
+        mvc.perform(post("/api/services").contentType(MediaType.APPLICATION_JSON).content("""{"name":"x"}"""))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value(40000))
+    }
+
+    @Test
+    @DisplayName("id가 숫자가 아니면 400과 공통 오류 형식을 돌려준다")
+    fun non_numeric_id_is_400() {
+        mvc.perform(get("/api/services/abc"))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value(40000))
+    }
+
+    @Test
+    @DisplayName("이름이 비어 있으면 400을 돌려준다")
+    fun blank_name_is_400() {
+        register("   ", "blank.example.com")
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value(40007))
+    }
+
+    @Test
+    @DisplayName("이름이 100자를 넘으면 400을 돌려주고 100자는 받아들인다")
+    fun name_length_limit() {
+        register("가".repeat(101), "long-name.example.com")
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value(40007))
+        register("가".repeat(100), "max-name.example.com").andExpect(status().isCreated)
+    }
+
+    @Test
+    @DisplayName("도메인이 255자를 넘으면 400을 돌려주고 255자는 받아들인다")
+    fun domain_length_limit() {
+        register("x", "a".repeat(254) + ".kr")
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value(40001))
+        register("x", "a".repeat(252) + ".kr").andExpect(status().isCreated)
+    }
 }
