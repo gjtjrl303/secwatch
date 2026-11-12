@@ -89,4 +89,12 @@ class NpmLockParserTest {
 
         assertThat(parser.parse(json).packages).containsExactly(npm("string-width", "4.2.3"))
     }
+
+    @Test
+    @DisplayName("name이 문자열이 아닌 항목이 있으면 지원하지 않는 형식으로 거부한다")
+    fun non_text_name_throws_unsupported() {
+        val json = """{"lockfileVersion":3,"packages":{"":{},"node_modules/lodash":{"name":123,"version":"4.17.21"}}}"""
+
+        assertThat(assertThrows<SecwatchException> { parser.parse(json) }.errorCode).isEqualTo(ErrorCode.UNSUPPORTED_FORMAT)
+    }
 }

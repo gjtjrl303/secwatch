@@ -29,7 +29,9 @@ class NpmLockParser(private val mapper: ObjectMapper) : DependencyParser {
                 skipped++
                 continue
             }
-            val name = node.get("name")?.asText()?.takeIf { it.isNotBlank() } ?: path.substringAfterLast(NODE_MODULES)
+            val nameNode = node.get("name")
+            if (nameNode != null && !nameNode.isTextual) throw unsupported()
+            val name = nameNode?.asText()?.takeIf { it.isNotBlank() } ?: path.substringAfterLast(NODE_MODULES)
             refs.add(PackageRef(ECOSYSTEM, name, version!!))
         }
         if (refs.isEmpty()) throw unsupported()
