@@ -1,4 +1,4 @@
-package com.example.secwatch.dependency.npmLockParser
+package com.example.secwatch.dependency.parser
 
 import com.example.secwatch.common.PackageReference
 import com.example.secwatch.common.ErrorCode
