@@ -11,8 +11,8 @@ import jakarta.persistence.Table
 @Entity
 @Table(name = "dependency")
 class Dependency(
-    @Column(name = "service_id", nullable = false)
-    var serviceId: Long,
+    @Column(name = "project_id", nullable = false)
+    var projectId: Long,
 
     @Column(nullable = false)
     var ecosystem: String,

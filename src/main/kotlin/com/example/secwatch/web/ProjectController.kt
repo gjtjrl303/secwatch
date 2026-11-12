@@ -1,0 +1,38 @@
+package com.example.secwatch.web
+
+import com.example.secwatch.project.Project
+import com.example.secwatch.project.ProjectManagement
+import com.example.secwatch.project.ProjectRegistration
+import org.springframework.http.HttpStatus
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.ResponseStatus
+import org.springframework.web.bind.annotation.RestController
+
+data class RegisterProjectRequest(val name: String, val domain: String)
+
+data class ProjectResponse(val id: Long, val name: String, val domain: String)
+
+@RestController
+@RequestMapping("/api/projects")
+class ProjectController(
+    private val management: ProjectManagement,
+    private val registration: ProjectRegistration,
+) {
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    fun register(@RequestBody request: RegisterProjectRequest): ProjectResponse =
+        registration.register(request.name, request.domain).toResponse()
+
+    @GetMapping
+    fun list(): List<ProjectResponse> = management.list().map { it.toResponse() }
+
+    @GetMapping("/{id}")
+    fun get(@PathVariable id: Long): ProjectResponse = management.get(id).toResponse()
+
+    private fun Project.toResponse() = ProjectResponse(id!!, name, domain)
+}

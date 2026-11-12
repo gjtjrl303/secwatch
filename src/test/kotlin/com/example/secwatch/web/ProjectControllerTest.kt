@@ -15,8 +15,8 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPat
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
 @AutoConfigureMockMvc
-@DisplayName("서비스 등록 API")
-class ServiceControllerTest : MySqlIntegrationTest() {
+@DisplayName("프로젝트 등록 API")
+class ProjectControllerTest : MySqlIntegrationTest() {
     @Autowired
     lateinit var mvc: MockMvc
 
@@ -25,18 +25,18 @@ class ServiceControllerTest : MySqlIntegrationTest() {
 
     @BeforeEach
     fun clean() {
-        jdbc.update("delete from monitored_service")
+        jdbc.update("delete from project")
     }
 
     private fun register(name: String, domain: String) =
         mvc.perform(
-            post("/api/services")
+            post("/api/projects")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"name":"$name","domain":"$domain"}""")
         )
 
     @Test
-    @DisplayName("등록하면 201과 서비스 정보를 돌려준다")
+    @DisplayName("등록하면 201과 프로젝트 정보를 돌려준다")
     fun register_returns_201() {
         register("모꼬지", "mokkoji.kr")
             .andExpect(status().isCreated)
@@ -89,28 +89,28 @@ class ServiceControllerTest : MySqlIntegrationTest() {
     }
 
     @Test
-    @DisplayName("목록 조회가 등록된 서비스를 돌려준다")
-    fun list_returns_registered_services() {
+    @DisplayName("목록 조회가 등록된 프로젝트를 돌려준다")
+    fun list_returns_registered_projects() {
         register("a", "a.example.com").andExpect(status().isCreated)
-        mvc.perform(get("/api/services"))
+        mvc.perform(get("/api/projects"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(1))
             .andExpect(jsonPath("$[0].domain").value("a.example.com"))
     }
 
     @Test
-    @DisplayName("없는 서비스를 조회하면 404와 안내 문구를 돌려준다")
-    fun get_unknown_service_is_404() {
-        mvc.perform(get("/api/services/999999"))
+    @DisplayName("없는 프로젝트를 조회하면 404와 안내 문구를 돌려준다")
+    fun get_unknown_project_is_404() {
+        mvc.perform(get("/api/projects/999999"))
             .andExpect(status().isNotFound)
             .andExpect(jsonPath("$.code").value(40401))
-            .andExpect(jsonPath("$.message").value("서비스를 찾을 수 없습니다."))
+            .andExpect(jsonPath("$.message").value("프로젝트를 찾을 수 없습니다."))
     }
 
     @Test
     @DisplayName("JSON이 깨진 요청은 400과 공통 오류 형식을 돌려준다")
     fun malformed_json_is_400() {
-        mvc.perform(post("/api/services").contentType(MediaType.APPLICATION_JSON).content("{broken"))
+        mvc.perform(post("/api/projects").contentType(MediaType.APPLICATION_JSON).content("{broken"))
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.code").value(40000))
             .andExpect(jsonPath("$.message").value("잘못된 요청입니다."))
@@ -119,7 +119,7 @@ class ServiceControllerTest : MySqlIntegrationTest() {
     @Test
     @DisplayName("필수 필드가 빠진 요청은 400과 공통 오류 형식을 돌려준다")
     fun missing_field_is_400() {
-        mvc.perform(post("/api/services").contentType(MediaType.APPLICATION_JSON).content("""{"name":"x"}"""))
+        mvc.perform(post("/api/projects").contentType(MediaType.APPLICATION_JSON).content("""{"name":"x"}"""))
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.code").value(40000))
     }
@@ -127,7 +127,7 @@ class ServiceControllerTest : MySqlIntegrationTest() {
     @Test
     @DisplayName("id가 숫자가 아니면 400과 공통 오류 형식을 돌려준다")
     fun non_numeric_id_is_400() {
-        mvc.perform(get("/api/services/abc"))
+        mvc.perform(get("/api/projects/abc"))
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.code").value(40000))
     }

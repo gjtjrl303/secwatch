@@ -1,4 +1,4 @@
-package com.example.secwatch.service
+package com.example.secwatch.project
 
 import com.example.secwatch.common.ErrorCode
 import com.example.secwatch.common.SecwatchException
