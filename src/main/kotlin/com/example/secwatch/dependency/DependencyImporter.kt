@@ -27,12 +27,12 @@ class DependencyImporter(
         val existing = dependencyRepository.findByProjectId(projectId)
         val existingReferences = existing.map { dependency -> dependency.toPackageReference() }.toSet()
 
-        val removed = existing.filter { dependency -> dependency.toPackageReference() !in requested }
-        val added = requested.filter { reference -> reference !in existingReferences }
+        val toRemove = existing.filter { dependency -> dependency.toPackageReference() !in requested }
+        val toAdd = requested.filter { reference -> reference !in existingReferences }
 
-        dependencyRepository.deleteAll(removed)
+        dependencyRepository.deleteAll(toRemove)
         dependencyRepository.saveAll(
-            added.map { reference -> Dependency(projectId, reference.ecosystem, reference.name, reference.version) }
+            toAdd.map { reference -> Dependency(projectId, reference.ecosystem, reference.name, reference.version) }
         )
         applicationEventPublisher.publishEvent(DependenciesImported(projectId))
         return ImportResult(requested.size, parsed.skipped)
