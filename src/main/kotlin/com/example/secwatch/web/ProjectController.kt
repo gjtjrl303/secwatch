@@ -1,5 +1,6 @@
 package com.example.secwatch.web
 
+import com.example.secwatch.common.ApiSuccessResponse
 import com.example.secwatch.project.Project
 import com.example.secwatch.project.ProjectManagement
 import com.example.secwatch.project.ProjectRegistration
@@ -25,14 +26,16 @@ class ProjectController(
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    fun register(@RequestBody request: RegisterProjectRequest): ProjectResponse =
-        projectRegistration.register(request.name, request.domain).toResponse()
+    fun register(@RequestBody request: RegisterProjectRequest): ApiSuccessResponse<ProjectResponse> =
+        ApiSuccessResponse(projectRegistration.register(request.name, request.domain).toResponse())
 
     @GetMapping
-    fun list(): List<ProjectResponse> = projectManagement.list().map { it.toResponse() }
+    fun list(): ApiSuccessResponse<List<ProjectResponse>> =
+        ApiSuccessResponse(projectManagement.list().map { it.toResponse() })
 
     @GetMapping("/{id}")
-    fun get(@PathVariable id: Long): ProjectResponse = projectManagement.get(id).toResponse()
+    fun get(@PathVariable id: Long): ApiSuccessResponse<ProjectResponse> =
+        ApiSuccessResponse(projectManagement.get(id).toResponse())
 
     private fun Project.toResponse() = ProjectResponse(id!!, name, domain)
 }

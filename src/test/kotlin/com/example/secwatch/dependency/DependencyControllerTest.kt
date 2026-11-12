@@ -76,8 +76,8 @@ class DependencyControllerTest : DbIntegrationTest() {
     fun import_returns_202_with_counts_and_stores_rows() {
         import(projectId, lock("a" to "1.0.0", "b" to "2.0.0"))
             .andExpect(status().isAccepted)
-            .andExpect(jsonPath("$.parsed").value(2))
-            .andExpect(jsonPath("$.skipped").value(0))
+            .andExpect(jsonPath("$.data.parsed").value(2))
+            .andExpect(jsonPath("$.data.skipped").value(0))
         assertThat(rows().map { it["name"] }).containsExactly("a", "b")
     }
 
@@ -87,8 +87,8 @@ class DependencyControllerTest : DbIntegrationTest() {
         val withLink = lock("a" to "1.0.0", extra = ""","node_modules/l":{"link":true}""")
         import(projectId, withLink)
             .andExpect(status().isAccepted)
-            .andExpect(jsonPath("$.parsed").value(1))
-            .andExpect(jsonPath("$.skipped").value(1))
+            .andExpect(jsonPath("$.data.parsed").value(1))
+            .andExpect(jsonPath("$.data.skipped").value(1))
     }
 
     @Test
