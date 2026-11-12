@@ -40,9 +40,9 @@ class ProjectControllerTest : MySqlIntegrationTest() {
     fun register_returns_201() {
         register("모꼬지", "mokkoji.kr")
             .andExpect(status().isCreated)
-            .andExpect(jsonPath("$.id").isNumber)
-            .andExpect(jsonPath("$.name").value("모꼬지"))
-            .andExpect(jsonPath("$.domain").value("mokkoji.kr"))
+            .andExpect(jsonPath("$.data.id").isNumber)
+            .andExpect(jsonPath("$.data.name").value("모꼬지"))
+            .andExpect(jsonPath("$.data.domain").value("mokkoji.kr"))
     }
 
     @Test
@@ -50,7 +50,7 @@ class ProjectControllerTest : MySqlIntegrationTest() {
     fun domain_is_lowercased() {
         register("x", "Mokkoji.KR")
             .andExpect(status().isCreated)
-            .andExpect(jsonPath("$.domain").value("mokkoji.kr"))
+            .andExpect(jsonPath("$.data.domain").value("mokkoji.kr"))
     }
 
     @Test
@@ -85,7 +85,7 @@ class ProjectControllerTest : MySqlIntegrationTest() {
     fun localhost_with_port_is_accepted() {
         register("juice", "localhost:3000")
             .andExpect(status().isCreated)
-            .andExpect(jsonPath("$.domain").value("localhost:3000"))
+            .andExpect(jsonPath("$.data.domain").value("localhost:3000"))
     }
 
     @Test
@@ -94,8 +94,8 @@ class ProjectControllerTest : MySqlIntegrationTest() {
         register("a", "a.example.com").andExpect(status().isCreated)
         mockMvc.perform(get("/api/projects"))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.length()").value(1))
-            .andExpect(jsonPath("$[0].domain").value("a.example.com"))
+            .andExpect(jsonPath("$.data.length()").value(1))
+            .andExpect(jsonPath("$.data[0].domain").value("a.example.com"))
     }
 
     @Test
