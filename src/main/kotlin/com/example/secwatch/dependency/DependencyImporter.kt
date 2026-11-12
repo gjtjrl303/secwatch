@@ -12,26 +12,26 @@ data class ImportResult(val parsed: Int, val skipped: Int)
 
 @Service
 class DependencyImporter(
-    private val parser: DependencyParser,
-    private val projects: ProjectRepository,
-    private val dependencies: DependencyRepository,
-    private val publisher: ApplicationEventPublisher,
+    private val dependencyParser: DependencyParser,
+    private val projectRepository: ProjectRepository,
+    private val dependencyRepository: DependencyRepository,
+    private val applicationEventPublisher: ApplicationEventPublisher,
 ) {
     @Transactional
     fun import(projectId: Long, content: String): ImportResult {
         if (content.isBlank()) throw SecwatchException(ErrorCode.EMPTY_DEPENDENCIES)
-        projects.findForUpdate(projectId) ?: throw SecwatchException(ErrorCode.NOT_FOUND_PROJECT)
+        projectRepository.findForUpdate(projectId) ?: throw SecwatchException(ErrorCode.NOT_FOUND_PROJECT)
 
-        val parsed = parser.parse(content)
+        val parsed = dependencyParser.parse(content)
         val wanted = parsed.packages.toSet()
-        val existing = dependencies.findByProjectId(projectId)
-        val kept = existing.map { it.toRef() }.toSet()
+        val existing = dependencyRepository.findByProjectId(projectId)
+        val kept = existing.map { it.toPackageReference() }.toSet()
 
-        dependencies.deleteAll(existing.filter { it.toRef() !in wanted })
-        dependencies.saveAll(
+        dependencyRepository.deleteAll(existing.filter { it.toPackageReference() !in wanted })
+        dependencyRepository.saveAll(
             wanted.filter { it !in kept }.map { Dependency(projectId, it.ecosystem, it.name, it.version) }
         )
-        publisher.publishEvent(DependenciesImported(projectId))
+        applicationEventPublisher.publishEvent(DependenciesImported(projectId))
         return ImportResult(wanted.size, parsed.skipped)
     }
 }

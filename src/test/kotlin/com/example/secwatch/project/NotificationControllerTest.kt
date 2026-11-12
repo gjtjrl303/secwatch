@@ -18,27 +18,27 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 @AutoConfigureMockMvc
 @DisplayName("알림 설정 API")
 class NotificationControllerTest : MySqlIntegrationTest() {
-    @Autowired lateinit var jdbc: JdbcTemplate
+    @Autowired lateinit var jdbcTemplate: JdbcTemplate
 
-    @Autowired lateinit var mvc: MockMvc
+    @Autowired lateinit var mockMvc: MockMvc
 
     private var projectId = 0L
 
     @BeforeEach
     fun seed() {
-        jdbc.update("delete from project")
-        jdbc.update("insert into project(name, domain) values ('t', 'n.example.com')")
-        projectId = jdbc.queryForObject("select id from project", Long::class.java)!!
+        jdbcTemplate.update("delete from project")
+        jdbcTemplate.update("insert into project(name, domain) values ('t', 'n.example.com')")
+        projectId = jdbcTemplate.queryForObject("select id from project", Long::class.java)!!
     }
 
-    private fun put(id: Long, url: String) = mvc.perform(
+    private fun put(id: Long, url: String) = mockMvc.perform(
         put("/api/projects/$id/notification")
             .contentType(MediaType.APPLICATION_JSON)
             .content("""{"webhookUrl":"$url"}""")
     )
 
     private fun storedWebhook() =
-        jdbc.queryForObject("select webhook_url from project where id = ?", String::class.java, projectId)
+        jdbcTemplate.queryForObject("select webhook_url from project where id = ?", String::class.java, projectId)
 
     @Test
     @DisplayName("디스코드 주소가 아니면 400과 안내 문구를 돌려준다")
@@ -74,7 +74,7 @@ class NotificationControllerTest : MySqlIntegrationTest() {
         val result = put(projectId, "https://discord.com/api/webhooks/1/topsecret").andExpect(status().isNoContent).andReturn()
         assertThat(result.response.contentAsString).isEmpty()
 
-        val body = mvc.perform(get("/api/projects/$projectId")).andReturn().response.contentAsString
+        val body = mockMvc.perform(get("/api/projects/$projectId")).andReturn().response.contentAsString
         assertThat(body).doesNotContain("topsecret").doesNotContain("webhooks")
     }
 

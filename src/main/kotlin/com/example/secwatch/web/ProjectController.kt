@@ -19,20 +19,20 @@ data class ProjectResponse(val id: Long, val name: String, val domain: String)
 @RestController
 @RequestMapping("/api/projects")
 class ProjectController(
-    private val management: ProjectManagement,
-    private val registration: ProjectRegistration,
+    private val projectManagement: ProjectManagement,
+    private val projectRegistration: ProjectRegistration,
 ) {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     fun register(@RequestBody request: RegisterProjectRequest): ProjectResponse =
-        registration.register(request.name, request.domain).toResponse()
+        projectRegistration.register(request.name, request.domain).toResponse()
 
     @GetMapping
-    fun list(): List<ProjectResponse> = management.list().map { it.toResponse() }
+    fun list(): List<ProjectResponse> = projectManagement.list().map { it.toResponse() }
 
     @GetMapping("/{id}")
-    fun get(@PathVariable id: Long): ProjectResponse = management.get(id).toResponse()
+    fun get(@PathVariable id: Long): ProjectResponse = projectManagement.get(id).toResponse()
 
     private fun Project.toResponse() = ProjectResponse(id!!, name, domain)
 }

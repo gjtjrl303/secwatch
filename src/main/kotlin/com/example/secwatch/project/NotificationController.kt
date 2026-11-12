@@ -12,11 +12,11 @@ data class WebhookRequest(val webhookUrl: String = "")
 
 @RestController
 @RequestMapping("/api/projects/{id}/notification")
-class NotificationController(private val management: ProjectManagement) {
+class NotificationController(private val projectManagement: ProjectManagement) {
 
     @PutMapping
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun update(@PathVariable id: Long, @RequestBody request: WebhookRequest) {
-        management.changeWebhook(id, request.webhookUrl)
+        projectManagement.changeWebhook(id, request.webhookUrl)
     }
 }

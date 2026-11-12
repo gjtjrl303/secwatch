@@ -7,16 +7,16 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 @Service
-class ProjectRegistration(private val repository: ProjectRepository) {
+class ProjectRegistration(private val projectRepository: ProjectRepository) {
 
     @Transactional
     fun register(name: String, rawDomain: String): Project {
         val projectName = name.trim()
         if (projectName.isEmpty() || projectName.length > MAX_NAME_LENGTH) throw SecwatchException(ErrorCode.INVALID_NAME)
         val domain = DomainName.normalize(rawDomain)
-        if (repository.existsByDomain(domain)) throw SecwatchException(ErrorCode.DUPLICATE_DOMAIN)
+        if (projectRepository.existsByDomain(domain)) throw SecwatchException(ErrorCode.DUPLICATE_DOMAIN)
         try {
-            return repository.save(Project(projectName, domain))
+            return projectRepository.save(Project(projectName, domain))
         } catch (e: DataIntegrityViolationException) {
             if (!isDuplicateDomain(e)) throw e
             throw SecwatchException(ErrorCode.DUPLICATE_DOMAIN, e)

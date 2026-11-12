@@ -12,10 +12,10 @@ data class ImportRequest(val content: String = "")
 
 @RestController
 @RequestMapping("/api/projects/{id}/dependencies")
-class DependencyController(private val importer: DependencyImporter) {
+class DependencyController(private val dependencyImporter: DependencyImporter) {
 
     @PostMapping
     @ResponseStatus(HttpStatus.ACCEPTED)
     fun import(@PathVariable id: Long, @RequestBody request: ImportRequest): ImportResult =
-        importer.import(id, request.content)
+        dependencyImporter.import(id, request.content)
 }

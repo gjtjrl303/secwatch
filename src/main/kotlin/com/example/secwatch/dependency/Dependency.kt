@@ -1,6 +1,6 @@
 package com.example.secwatch.dependency
 
-import com.example.secwatch.common.PackageRef
+import com.example.secwatch.common.PackageReference
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
@@ -27,5 +27,5 @@ class Dependency(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null
 
-    fun toRef() = PackageRef(ecosystem, name, version)
+    fun toPackageReference() = PackageReference(ecosystem, name, version)
 }

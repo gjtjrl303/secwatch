@@ -14,14 +14,14 @@ import org.springframework.transaction.support.TransactionTemplate
 
 abstract class DbIntegrationTest : MySqlIntegrationTest() {
     @Autowired
-    lateinit var jdbc: JdbcTemplate
+    lateinit var jdbcTemplate: JdbcTemplate
 
     @Autowired
-    lateinit var txManager: PlatformTransactionManager
+    lateinit var transactionManager: PlatformTransactionManager
 
     @BeforeEach
     fun cleanDatabase() {
-        jdbc.update("delete from project")
+        jdbcTemplate.update("delete from project")
     }
 
     /** 다른 트랜잭션이 프로젝트 행을 잠그고 [uncommitted]를 커밋 없이 실행하는 동안 [action]을 두 번째 스레드에서 시작한다. [action]은 기다렸다가 첫 트랜잭션이 커밋된 뒤에 이어진다. */
@@ -29,8 +29,8 @@ abstract class DbIntegrationTest : MySqlIntegrationTest() {
         val locked = CountDownLatch(1)
         val release = CountDownLatch(1)
         Thread {
-            TransactionTemplate(txManager).executeWithoutResult {
-                jdbc.queryForObject("select id from project where id = ? for update", Long::class.java, projectId)
+            TransactionTemplate(transactionManager).executeWithoutResult {
+                jdbcTemplate.queryForObject("select id from project where id = ? for update", Long::class.java, projectId)
                 uncommitted()
                 locked.countDown()
                 release.await(30, TimeUnit.SECONDS)
@@ -47,5 +47,5 @@ abstract class DbIntegrationTest : MySqlIntegrationTest() {
         return future.get(15, TimeUnit.SECONDS)
     }
 
-    fun count(table: String): Int = jdbc.queryForObject("select count(*) from $table", Int::class.java)!!
+    fun count(table: String): Int = jdbcTemplate.queryForObject("select count(*) from $table", Int::class.java)!!
 }
