@@ -1,0 +1,16 @@
+{
+  "name": "demo",
+  "version": "1.0.0",
+  "lockfileVersion": 3,
+  "requires": true,
+  "packages": {
+    "": { "name": "demo", "version": "1.0.0", "dependencies": { "lodash": "^4.17.20" } },
+    "node_modules/lodash": { "version": "4.17.20", "resolved": "https://registry.npmjs.org/lodash/-/lodash-4.17.20.tgz" },
+    "node_modules/@scope/pkg": { "version": "1.2.3" },
+    "node_modules/a": { "version": "1.0.0" },
+    "node_modules/a/node_modules/b": { "version": "2.0.0" },
+    "node_modules/b": { "version": "1.0.0" },
+    "node_modules/linked": { "resolved": "../linked", "link": true },
+    "node_modules/no-version": { "dev": true }
+  }
+}
