@@ -21,16 +21,16 @@ abstract class DbIntegrationTest : MySqlIntegrationTest() {
 
     @BeforeEach
     fun cleanDatabase() {
-        jdbc.update("delete from monitored_service")
+        jdbc.update("delete from project")
     }
 
-    /** 다른 트랜잭션이 서비스 행을 잠그고 [uncommitted]를 커밋 없이 실행하는 동안 [action]을 두 번째 스레드에서 시작한다. [action]은 기다렸다가 첫 트랜잭션이 커밋된 뒤에 이어진다. */
-    fun <T> blockedWhileServiceIsLocked(serviceId: Long, uncommitted: () -> Unit = {}, action: () -> T): T {
+    /** 다른 트랜잭션이 프로젝트 행을 잠그고 [uncommitted]를 커밋 없이 실행하는 동안 [action]을 두 번째 스레드에서 시작한다. [action]은 기다렸다가 첫 트랜잭션이 커밋된 뒤에 이어진다. */
+    fun <T> blockedWhileProjectIsLocked(projectId: Long, uncommitted: () -> Unit = {}, action: () -> T): T {
         val locked = CountDownLatch(1)
         val release = CountDownLatch(1)
         Thread {
             TransactionTemplate(txManager).executeWithoutResult {
-                jdbc.queryForObject("select id from monitored_service where id = ? for update", Long::class.java, serviceId)
+                jdbc.queryForObject("select id from project where id = ? for update", Long::class.java, projectId)
                 uncommitted()
                 locked.countDown()
                 release.await(30, TimeUnit.SECONDS)

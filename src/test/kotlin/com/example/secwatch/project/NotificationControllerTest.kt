@@ -1,4 +1,4 @@
-package com.example.secwatch.service
+package com.example.secwatch.project
 
 import com.example.secwatch.support.MySqlIntegrationTest
 import org.assertj.core.api.Assertions.assertThat
@@ -22,28 +22,28 @@ class NotificationControllerTest : MySqlIntegrationTest() {
 
     @Autowired lateinit var mvc: MockMvc
 
-    private var serviceId = 0L
+    private var projectId = 0L
 
     @BeforeEach
     fun seed() {
-        jdbc.update("delete from monitored_service")
-        jdbc.update("insert into monitored_service(name, domain) values ('t', 'n.example.com')")
-        serviceId = jdbc.queryForObject("select id from monitored_service", Long::class.java)!!
+        jdbc.update("delete from project")
+        jdbc.update("insert into project(name, domain) values ('t', 'n.example.com')")
+        projectId = jdbc.queryForObject("select id from project", Long::class.java)!!
     }
 
     private fun put(id: Long, url: String) = mvc.perform(
-        put("/api/services/$id/notification")
+        put("/api/projects/$id/notification")
             .contentType(MediaType.APPLICATION_JSON)
             .content("""{"webhookUrl":"$url"}""")
     )
 
     private fun storedWebhook() =
-        jdbc.queryForObject("select webhook_url from monitored_service where id = ?", String::class.java, serviceId)
+        jdbc.queryForObject("select webhook_url from project where id = ?", String::class.java, projectId)
 
     @Test
     @DisplayName("디스코드 주소가 아니면 400과 안내 문구를 돌려준다")
     fun rejects_non_discord_url() {
-        put(serviceId, "https://evil.example.com/api/webhooks/1/a")
+        put(projectId, "https://evil.example.com/api/webhooks/1/a")
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.code").value(40002))
             .andExpect(jsonPath("$.message").value("디스코드 웹훅 주소를 확인해주세요."))
@@ -53,46 +53,46 @@ class NotificationControllerTest : MySqlIntegrationTest() {
     @Test
     @DisplayName("http 주소나 뒤가 빈 주소, 빈 값은 거부한다")
     fun rejects_http_and_empty_tail() {
-        put(serviceId, "http://discord.com/api/webhooks/1/a").andExpect(status().isBadRequest)
-        put(serviceId, "https://discord.com/api/webhooks/").andExpect(status().isBadRequest)
-        put(serviceId, "").andExpect(status().isBadRequest)
+        put(projectId, "http://discord.com/api/webhooks/1/a").andExpect(status().isBadRequest)
+        put(projectId, "https://discord.com/api/webhooks/").andExpect(status().isBadRequest)
+        put(projectId, "").andExpect(status().isBadRequest)
     }
 
     @Test
     @DisplayName("discord.com과 discordapp.com 주소는 받아들여 저장한다")
     fun accepts_discord_com_and_discordapp_com() {
-        put(serviceId, "https://discord.com/api/webhooks/1/a").andExpect(status().isNoContent)
+        put(projectId, "https://discord.com/api/webhooks/1/a").andExpect(status().isNoContent)
         assertThat(storedWebhook()).isEqualTo("https://discord.com/api/webhooks/1/a")
 
-        put(serviceId, "https://discordapp.com/api/webhooks/2/b").andExpect(status().isNoContent)
+        put(projectId, "https://discordapp.com/api/webhooks/2/b").andExpect(status().isNoContent)
         assertThat(storedWebhook()).isEqualTo("https://discordapp.com/api/webhooks/2/b")
     }
 
     @Test
     @DisplayName("응답에 웹훅 주소를 절대 싣지 않는다")
     fun response_never_contains_webhook_url() {
-        val result = put(serviceId, "https://discord.com/api/webhooks/1/topsecret").andExpect(status().isNoContent).andReturn()
+        val result = put(projectId, "https://discord.com/api/webhooks/1/topsecret").andExpect(status().isNoContent).andReturn()
         assertThat(result.response.contentAsString).isEmpty()
 
-        val body = mvc.perform(get("/api/services/$serviceId")).andReturn().response.contentAsString
+        val body = mvc.perform(get("/api/projects/$projectId")).andReturn().response.contentAsString
         assertThat(body).doesNotContain("topsecret").doesNotContain("webhooks")
     }
 
     @Test
-    @DisplayName("없는 서비스에 설정하면 404와 안내 문구를 돌려준다")
-    fun unknown_service_is_404() {
+    @DisplayName("없는 프로젝트에 설정하면 404와 안내 문구를 돌려준다")
+    fun unknown_project_is_404() {
         put(999999, "https://discord.com/api/webhooks/1/a")
             .andExpect(status().isNotFound)
-            .andExpect(jsonPath("$.message").value("서비스를 찾을 수 없습니다."))
+            .andExpect(jsonPath("$.message").value("프로젝트를 찾을 수 없습니다."))
     }
 
     @Test
     @DisplayName("웹훅 주소가 500자를 넘으면 400을 돌려주고 500자는 받아들인다")
     fun webhook_length_limit() {
         val prefix = "https://discord.com/api/webhooks/"
-        put(serviceId, prefix + "a".repeat(468))
+        put(projectId, prefix + "a".repeat(468))
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.code").value(40002))
-        put(serviceId, prefix + "a".repeat(467)).andExpect(status().isNoContent)
+        put(projectId, prefix + "a".repeat(467)).andExpect(status().isNoContent)
     }
 }

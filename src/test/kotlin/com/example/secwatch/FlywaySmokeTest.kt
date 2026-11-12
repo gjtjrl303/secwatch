@@ -13,13 +13,13 @@ class FlywaySmokeTest : MySqlIntegrationTest() {
     lateinit var jdbc: JdbcTemplate
 
     @Test
-    @DisplayName("마이그레이션이 서비스와 의존성 테이블을 만든다")
+    @DisplayName("마이그레이션이 프로젝트와 의존성 테이블을 만든다")
     fun flyway_creates_core_tables() {
         val tables = jdbc.queryForList(
             "select table_name from information_schema.tables where table_schema = database()",
             String::class.java
         ).map { it.lowercase() }
 
-        assertThat(tables).contains("monitored_service", "dependency")
+        assertThat(tables).contains("project", "dependency")
     }
 }

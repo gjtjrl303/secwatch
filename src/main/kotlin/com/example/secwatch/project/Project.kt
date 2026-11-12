@@ -1,4 +1,4 @@
-package com.example.secwatch.service
+package com.example.secwatch.project
 
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
@@ -8,8 +8,8 @@ import jakarta.persistence.Id
 import jakarta.persistence.Table
 
 @Entity
-@Table(name = "monitored_service")
-class MonitoredService(
+@Table(name = "project")
+class Project(
     @Column(nullable = false)
     var name: String,
 

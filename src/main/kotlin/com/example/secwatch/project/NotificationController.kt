@@ -1,4 +1,4 @@
-package com.example.secwatch.service
+package com.example.secwatch.project
 
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.PathVariable
@@ -11,8 +11,8 @@ import org.springframework.web.bind.annotation.RestController
 data class WebhookRequest(val webhookUrl: String = "")
 
 @RestController
-@RequestMapping("/api/services/{id}/notification")
-class NotificationController(private val management: ServiceManagement) {
+@RequestMapping("/api/projects/{id}/notification")
+class NotificationController(private val management: ProjectManagement) {
 
     @PutMapping
     @ResponseStatus(HttpStatus.NO_CONTENT)

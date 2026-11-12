@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController
 data class ImportRequest(val content: String = "")
 
 @RestController
-@RequestMapping("/api/services/{id}/dependencies")
+@RequestMapping("/api/projects/{id}/dependencies")
 class DependencyController(private val importer: DependencyImporter) {
 
     @PostMapping
