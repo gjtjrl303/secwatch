@@ -81,4 +81,12 @@ class NpmLockParserTest {
         val empty = """{"lockfileVersion":3,"packages":{"":{}}}"""
         assertThat(assertThrows<SecwatchException> { parser.parse(empty) }.errorCode).isEqualTo(ErrorCode.UNSUPPORTED_FORMAT)
     }
+
+    @Test
+    @DisplayName("alias로 설치된 패키지는 경로의 별명이 아니라 실제 패키지 이름으로 저장한다")
+    fun alias_uses_real_package_name() {
+        val json = """{"lockfileVersion":3,"packages":{"":{},"node_modules/string-width-cjs":{"name":"string-width","version":"4.2.3"}}}"""
+
+        assertThat(parser.parse(json).packages).containsExactly(npm("string-width", "4.2.3"))
+    }
 }
