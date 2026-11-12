@@ -1,4 +1,4 @@
-package com.example.secwatch.dependency.parser
+package com.example.secwatch.dependency.npmLockParser
 
 import com.example.secwatch.common.PackageReference
 import com.example.secwatch.common.ErrorCode
@@ -11,7 +11,7 @@ import org.junit.jupiter.api.assertThrows
 
 @DisplayName("package-lock.json 읽기")
 class NpmLockParserTest {
-    private val parser = NpmLockParser(ObjectMapper())
+    private val npmLockParser = NpmLockParser(ObjectMapper())
 
     private fun fixture() = javaClass.getResource("/fixtures/package-lock-v3-small.json")!!.readText()
 
@@ -20,7 +20,7 @@ class NpmLockParserTest {
     @Test
     @DisplayName("최상위와 중첩 패키지를 모두 읽는다")
     fun parses_top_level_and_nested() {
-        val result = parser.parse(fixture())
+        val result = npmLockParser.parse(fixture())
 
         assertThat(result.packages).contains(
             npm("lodash", "4.17.20"),
@@ -32,20 +32,20 @@ class NpmLockParserTest {
     @Test
     @DisplayName("@scope/이름 형태의 패키지 이름을 읽는다")
     fun scoped_package_name() {
-        assertThat(parser.parse(fixture()).packages).contains(npm("@scope/pkg", "1.2.3"))
+        assertThat(npmLockParser.parse(fixture()).packages).contains(npm("@scope/pkg", "1.2.3"))
     }
 
     @Test
     @DisplayName("이름이 같고 버전이 다른 패키지는 각각 남긴다")
     fun same_name_different_versions_kept() {
-        val bs = parser.parse(fixture()).packages.filter { it.name == "b" }.map { it.version }
+        val bs = npmLockParser.parse(fixture()).packages.filter { it.name == "b" }.map { it.version }
         assertThat(bs).containsExactlyInAnyOrder("1.0.0", "2.0.0")
     }
 
     @Test
     @DisplayName("링크와 버전 없는 항목은 건너뛰고 개수를 세며 루트는 세지 않는다")
     fun skips_link_and_versionless_but_not_root() {
-        val result = parser.parse(fixture())
+        val result = npmLockParser.parse(fixture())
 
         assertThat(result.skipped).isEqualTo(2)
         assertThat(result.packages.map { it.name }).doesNotContain("demo", "linked", "no-version")
@@ -59,27 +59,27 @@ class NpmLockParserTest {
             "node_modules/x":{"version":"1.0.0"},
             "node_modules/y/node_modules/x":{"version":"1.0.0"}}}"""
 
-        assertThat(parser.parse(json).packages).containsExactly(npm("x", "1.0.0"))
+        assertThat(npmLockParser.parse(json).packages).containsExactly(npm("x", "1.0.0"))
     }
 
     @Test
     @DisplayName("lockfileVersion 1은 지원하지 않는 형식으로 거부한다")
     fun lockfile_v1_throws_unsupported() {
         val v1 = """{"lockfileVersion":1,"dependencies":{"a":{"version":"1.0.0"}}}"""
-        assertThat(assertThrows<SecwatchException> { parser.parse(v1) }.errorCode).isEqualTo(ErrorCode.UNSUPPORTED_FORMAT)
+        assertThat(assertThrows<SecwatchException> { npmLockParser.parse(v1) }.errorCode).isEqualTo(ErrorCode.UNSUPPORTED_FORMAT)
     }
 
     @Test
     @DisplayName("JSON이 아니면 지원하지 않는 형식으로 거부한다")
     fun invalid_json_throws_unsupported() {
-        assertThat(assertThrows<SecwatchException> { parser.parse("not json") }.errorCode).isEqualTo(ErrorCode.UNSUPPORTED_FORMAT)
+        assertThat(assertThrows<SecwatchException> { npmLockParser.parse("not json") }.errorCode).isEqualTo(ErrorCode.UNSUPPORTED_FORMAT)
     }
 
     @Test
     @DisplayName("읽을 라이브러리가 하나도 없으면 지원하지 않는 형식으로 거부한다")
     fun empty_packages_throws_unsupported() {
         val empty = """{"lockfileVersion":3,"packages":{"":{}}}"""
-        assertThat(assertThrows<SecwatchException> { parser.parse(empty) }.errorCode).isEqualTo(ErrorCode.UNSUPPORTED_FORMAT)
+        assertThat(assertThrows<SecwatchException> { npmLockParser.parse(empty) }.errorCode).isEqualTo(ErrorCode.UNSUPPORTED_FORMAT)
     }
 
     @Test
@@ -87,7 +87,7 @@ class NpmLockParserTest {
     fun alias_uses_real_package_name() {
         val json = """{"lockfileVersion":3,"packages":{"":{},"node_modules/string-width-cjs":{"name":"string-width","version":"4.2.3"}}}"""
 
-        assertThat(parser.parse(json).packages).containsExactly(npm("string-width", "4.2.3"))
+        assertThat(npmLockParser.parse(json).packages).containsExactly(npm("string-width", "4.2.3"))
     }
 
     @Test
@@ -95,6 +95,6 @@ class NpmLockParserTest {
     fun non_text_name_throws_unsupported() {
         val json = """{"lockfileVersion":3,"packages":{"":{},"node_modules/lodash":{"name":123,"version":"4.17.21"}}}"""
 
-        assertThat(assertThrows<SecwatchException> { parser.parse(json) }.errorCode).isEqualTo(ErrorCode.UNSUPPORTED_FORMAT)
+        assertThat(assertThrows<SecwatchException> { npmLockParser.parse(json) }.errorCode).isEqualTo(ErrorCode.UNSUPPORTED_FORMAT)
     }
 }

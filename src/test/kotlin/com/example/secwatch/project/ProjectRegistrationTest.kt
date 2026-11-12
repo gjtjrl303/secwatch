@@ -14,22 +14,22 @@ import org.springframework.dao.DataIntegrityViolationException
 class ProjectRegistrationTest {
 
     private fun registrationFailingToSave(message: String): ProjectRegistration {
-        val repository = mock(ProjectRepository::class.java, Answer { invocation ->
+        val projectRepository = mock(ProjectRepository::class.java, Answer { invocation ->
             when (invocation.method.name) {
                 "existsByDomain" -> false
                 "save" -> throw DataIntegrityViolationException(message)
                 else -> null
             }
         })
-        return ProjectRegistration(repository)
+        return ProjectRegistration(projectRepository)
     }
 
     @Test
     @DisplayName("도메인 유니크 제약을 어겨 저장이 실패하면 중복 오류로 바꾸고 원인을 보존한다")
     fun domain_unique_violation_becomes_duplicate() {
-        val registration = registrationFailingToSave("Duplicate entry 'a.com' for key 'project.uk_project_domain'")
+        val projectRegistration = registrationFailingToSave("Duplicate entry 'a.com' for key 'project.uk_project_domain'")
 
-        val e = assertThrows<SecwatchException> { registration.register("a", "a.com") }
+        val e = assertThrows<SecwatchException> { projectRegistration.register("a", "a.com") }
 
         assertThat(e.errorCode).isEqualTo(ErrorCode.DUPLICATE_DOMAIN)
         assertThat(e.cause).isInstanceOf(DataIntegrityViolationException::class.java)
@@ -38,8 +38,8 @@ class ProjectRegistrationTest {
     @Test
     @DisplayName("다른 이유로 저장이 실패하면 중복 오류로 바꾸지 않고 그대로 던진다")
     fun other_integrity_violation_is_not_duplicate() {
-        val registration = registrationFailingToSave("Data too long for column 'name' at row 1")
+        val projectRegistration = registrationFailingToSave("Data too long for column 'name' at row 1")
 
-        assertThrows<DataIntegrityViolationException> { registration.register("a", "a.com") }
+        assertThrows<DataIntegrityViolationException> { projectRegistration.register("a", "a.com") }
     }
 }
