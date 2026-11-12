@@ -23,15 +23,18 @@ class DependencyImporter(
         projectRepository.findForUpdate(projectId) ?: throw SecwatchException(ErrorCode.NOT_FOUND_PROJECT)
 
         val parsed = dependencyParser.parse(content)
-        val wanted = parsed.packages.toSet()
+        val requested = parsed.packages.toSet()
         val existing = dependencyRepository.findByProjectId(projectId)
-        val kept = existing.map { it.toPackageReference() }.toSet()
+        val existingReferences = existing.map { dependency -> dependency.toPackageReference() }.toSet()
 
-        dependencyRepository.deleteAll(existing.filter { it.toPackageReference() !in wanted })
+        val toRemove = existing.filter { dependency -> dependency.toPackageReference() !in requested }
+        val toAdd = requested.filter { reference -> reference !in existingReferences }
+
+        dependencyRepository.deleteAll(toRemove)
         dependencyRepository.saveAll(
-            wanted.filter { it !in kept }.map { Dependency(projectId, it.ecosystem, it.name, it.version) }
+            toAdd.map { reference -> Dependency(projectId, reference.ecosystem, reference.name, reference.version) }
         )
         applicationEventPublisher.publishEvent(DependenciesImported(projectId))
-        return ImportResult(wanted.size, parsed.skipped)
+        return ImportResult(requested.size, parsed.skipped)
     }
 }

@@ -23,8 +23,10 @@ class ProjectRegistration(private val projectRepository: ProjectRepository) {
         }
     }
 
-    private fun isDuplicateDomain(e: Throwable): Boolean =
-        generateSequence(e) { it.cause }.any { it.message?.contains(DOMAIN_UNIQUE_KEY) == true }
+    private fun isDuplicateDomain(e: Throwable): Boolean {
+        val causes = generateSequence(e) { cause -> cause.cause }
+        return causes.any { cause -> cause.message?.contains(DOMAIN_UNIQUE_KEY) == true }
+    }
 
     private companion object {
         const val MAX_NAME_LENGTH = 100

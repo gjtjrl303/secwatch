@@ -14,32 +14,32 @@ class NpmLockParser(private val objectMapper: ObjectMapper) : DependencyParser {
         val root = try {
             objectMapper.readTree(content)
         } catch (e: JsonProcessingException) {
-            throw unsupported()
+            throw SecwatchException(ErrorCode.UNSUPPORTED_FORMAT)
         }
         val entries = root?.get("packages")
-        if (entries == null || !entries.isObject) throw unsupported()
+        if (entries == null || !entries.isObject) throw SecwatchException(ErrorCode.UNSUPPORTED_FORMAT)
 
         val packageReferences = LinkedHashSet<PackageReference>()
         var skipped = 0
         for ((path, node) in entries.fields()) {
             if (path.isEmpty()) continue
             val version = node.get("version")?.asText()
-            val isLibrary = path.contains(NODE_MODULES) && !node.path("link").asBoolean(false) && !version.isNullOrBlank()
-            if (!isLibrary) {
+            val isInNodeModules = path.contains(NODE_MODULES)
+            val isLink = node.path("link").asBoolean(false)
+            if (!isInNodeModules || isLink || version.isNullOrBlank()) {
                 skipped++
                 continue
             }
+
             val nameNode = node.get("name")
-            if (nameNode != null && !nameNode.isTextual) throw unsupported()
-            val name = nameNode?.asText()?.takeIf { it.isNotBlank() } ?: path.substringAfterLast(NODE_MODULES)
-            packageReferences.add(PackageReference(ECOSYSTEM, name, version!!))
+            if (nameNode != null && !nameNode.isTextual) throw SecwatchException(ErrorCode.UNSUPPORTED_FORMAT)
+            val nameFromPath = path.substringAfterLast(NODE_MODULES)
+            val name = if (nameNode != null && nameNode.asText().isNotBlank()) nameNode.asText() else nameFromPath
+            packageReferences.add(PackageReference(ECOSYSTEM, name, version))
         }
-        if (packageReferences.isEmpty()) throw unsupported()
+        if (packageReferences.isEmpty()) throw SecwatchException(ErrorCode.UNSUPPORTED_FORMAT)
         return ParseResult(packageReferences.toList(), skipped)
     }
-
-    private fun unsupported() =
-        SecwatchException(ErrorCode.UNSUPPORTED_FORMAT)
 
     private companion object {
         const val ECOSYSTEM = "npm"

@@ -31,7 +31,7 @@ class ProjectController(
 
     @GetMapping
     fun list(): ApiSuccessResponse<List<ProjectResponse>> =
-        ApiSuccessResponse(projectManagement.list().map { it.toResponse() })
+        ApiSuccessResponse(projectManagement.list().map { project -> project.toResponse() })
 
     @GetMapping("/{id}")
     fun get(@PathVariable id: Long): ApiSuccessResponse<ProjectResponse> =
