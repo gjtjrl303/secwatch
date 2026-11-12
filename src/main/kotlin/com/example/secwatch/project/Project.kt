@@ -11,15 +11,21 @@ import jakarta.persistence.Table
 @Table(name = "project")
 class Project(
     @Column(nullable = false)
-    var name: String,
+    val name: String,
 
     @Column(nullable = false)
-    var domain: String,
-
-    @Column(name = "webhook_url")
-    var webhookUrl: String? = null,
+    val domain: String,
 ) {
+    @Column(name = "webhook_url")
+    var webhookUrl: String? = null
+        private set
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null
+        private set
+
+    fun changeWebhook(webhookUrl: String) {
+        this.webhookUrl = webhookUrl
+    }
 }

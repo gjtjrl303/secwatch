@@ -12,20 +12,21 @@ import jakarta.persistence.Table
 @Table(name = "dependency")
 class Dependency(
     @Column(name = "project_id", nullable = false)
-    var projectId: Long,
+    val projectId: Long,
 
     @Column(nullable = false)
-    var ecosystem: String,
+    val ecosystem: String,
 
     @Column(nullable = false)
-    var name: String,
+    val name: String,
 
     @Column(nullable = false)
-    var version: String,
+    val version: String,
 ) {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null
+        private set
 
     fun toPackageReference() = PackageReference(ecosystem, name, version)
 }

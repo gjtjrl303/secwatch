@@ -19,7 +19,7 @@ class ProjectManagement(private val projectRepository: ProjectRepository) {
     fun changeWebhook(id: Long, rawUrl: String) {
         val url = WebhookUrl.validate(rawUrl)
         val project = get(id)
-        project.webhookUrl = url
+        project.changeWebhook(url)
         projectRepository.save(project)
     }
 }
