@@ -12,8 +12,10 @@ object WebhookUrl {
 
     fun validate(raw: String): String {
         val url = raw.trim()
-        val valid = PREFIXES.any { url.startsWith(it) && url.length > it.length } && url.none { it.isWhitespace() } && url.length <= MAX_LENGTH
-        if (!valid) throw SecwatchException(ErrorCode.INVALID_WEBHOOK_URL)
+        val hasDiscordPrefix = PREFIXES.any { prefix -> url.startsWith(prefix) && url.length > prefix.length }
+        val hasWhitespace = url.any { character -> character.isWhitespace() }
+        val isTooLong = url.length > MAX_LENGTH
+        if (!hasDiscordPrefix || hasWhitespace || isTooLong) throw SecwatchException(ErrorCode.INVALID_WEBHOOK_URL)
         return url
     }
 }
