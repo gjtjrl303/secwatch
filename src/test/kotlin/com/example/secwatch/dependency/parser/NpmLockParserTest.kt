@@ -1,6 +1,6 @@
 package com.example.secwatch.dependency.parser
 
-import com.example.secwatch.common.PackageRef
+import com.example.secwatch.common.PackageReference
 import com.example.secwatch.common.ErrorCode
 import com.example.secwatch.common.SecwatchException
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -15,7 +15,7 @@ class NpmLockParserTest {
 
     private fun fixture() = javaClass.getResource("/fixtures/package-lock-v3-small.json")!!.readText()
 
-    private fun npm(name: String, version: String) = PackageRef("npm", name, version)
+    private fun npm(name: String, version: String) = PackageReference("npm", name, version)
 
     @Test
     @DisplayName("최상위와 중첩 패키지를 모두 읽는다")

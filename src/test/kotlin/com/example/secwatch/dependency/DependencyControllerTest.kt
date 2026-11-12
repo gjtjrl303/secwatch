@@ -20,16 +20,16 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 @RecordApplicationEvents
 @DisplayName("의존성 등록 API")
 class DependencyControllerTest : DbIntegrationTest() {
-    @Autowired lateinit var mvc: MockMvc
-    @Autowired lateinit var mapper: ObjectMapper
-    @Autowired lateinit var events: ApplicationEvents
+    @Autowired lateinit var mockMvc: MockMvc
+    @Autowired lateinit var objectMapper: ObjectMapper
+    @Autowired lateinit var applicationEvents: ApplicationEvents
 
     private var projectId = 0L
 
     @BeforeEach
     fun setUp() {
-        jdbc.update("insert into project(name, domain) values ('t', 'juice.example.com')")
-        projectId = jdbc.queryForObject("select id from project", Long::class.java)!!
+        jdbcTemplate.update("insert into project(name, domain) values ('t', 'juice.example.com')")
+        projectId = jdbcTemplate.queryForObject("select id from project", Long::class.java)!!
     }
 
     private fun lock(vararg libs: Pair<String, String>, extra: String = ""): String {
@@ -37,13 +37,13 @@ class DependencyControllerTest : DbIntegrationTest() {
         return """{"lockfileVersion":3,"packages":{"":{}${if (entries.isEmpty()) "" else ",$entries"}$extra}}"""
     }
 
-    private fun import(id: Long, content: String) = mvc.perform(
+    private fun import(id: Long, content: String) = mockMvc.perform(
         post("/api/projects/$id/dependencies")
             .contentType(MediaType.APPLICATION_JSON)
-            .content(mapper.writeValueAsString(mapOf("content" to content)))
+            .content(objectMapper.writeValueAsString(mapOf("content" to content)))
     )
 
-    private fun rows() = jdbc.queryForList(
+    private fun rows() = jdbcTemplate.queryForList(
         "select id, name, version from dependency where project_id = ? order by name", projectId
     )
 
@@ -109,7 +109,7 @@ class DependencyControllerTest : DbIntegrationTest() {
     fun event_published_for_the_project() {
         import(projectId, lock("a" to "1.0.0")).andExpect(status().isAccepted)
 
-        val published = events.stream(DependenciesImported::class.java).toList()
+        val published = applicationEvents.stream(DependenciesImported::class.java).toList()
 
         assertThat(published).containsExactly(DependenciesImported(projectId))
     }
