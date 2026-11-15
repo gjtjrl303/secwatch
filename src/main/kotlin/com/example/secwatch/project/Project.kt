@@ -13,20 +13,20 @@ class Project(name: String, domain: String) {
 
     @Column(nullable = false)
     var name: String = name
-        private set
+        protected set
 
     @Column(nullable = false)
     var domain: String = domain
-        private set
+        protected set
 
     @Column(name = "webhook_url")
     var webhookUrl: String? = null
-        private set
+        protected set
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null
-        private set
+        protected set
 
     fun update(name: String, domain: String) {
         this.name = name

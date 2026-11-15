@@ -20,7 +20,7 @@ class DependencyImporter(
     @Transactional
     fun import(projectId: Long, content: String): ImportResult {
         if (content.isBlank()) throw SecwatchException(ErrorCode.EMPTY_DEPENDENCIES)
-        projectRepository.findForUpdate(projectId) ?: throw SecwatchException(ErrorCode.NOT_FOUND_PROJECT)
+        val project = projectRepository.findForUpdate(projectId) ?: throw SecwatchException(ErrorCode.NOT_FOUND_PROJECT)
 
         val parsed = dependencyParser.parse(content)
         val requested = parsed.packages.toSet()
@@ -32,7 +32,7 @@ class DependencyImporter(
 
         dependencyRepository.deleteAll(toRemove)
         dependencyRepository.saveAll(
-            toAdd.map { reference -> Dependency(projectId, reference.ecosystem, reference.name, reference.version) }
+            toAdd.map { reference -> Dependency(project, reference.ecosystem, reference.name, reference.version) }
         )
         applicationEventPublisher.publishEvent(DependenciesImported(projectId))
         return ImportResult(requested.size, parsed.skipped)
