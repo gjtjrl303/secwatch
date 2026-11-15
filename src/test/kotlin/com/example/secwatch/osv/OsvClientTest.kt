@@ -174,4 +174,57 @@ class OsvClientTest {
 
         assertThrows<OsvUnavailableException> { client.getVulnerability("HTML-1") }
     }
+
+    @Test
+    @DisplayName("결과가 null이거나 객체가 아니면 취약점 없음으로 두지 않고 사용 불가 예외로 바꾼다")
+    fun malformed_results_throw_unavailable() {
+        server.expect(requestTo("$baseUrl/v1/querybatch"))
+            .andRespond(withSuccess("""{"results":[null]}""", MediaType.APPLICATION_JSON))
+        server.expect(requestTo("$baseUrl/v1/querybatch"))
+            .andRespond(withSuccess("""{"results":{"vulns":[]}}""", MediaType.APPLICATION_JSON))
+
+        assertThrows<OsvUnavailableException> { client.findVulnerabilityIds(listOf(npm("a", "1.0.0"))) }
+        assertThrows<OsvUnavailableException> { client.findVulnerabilityIds(listOf(npm("a", "1.0.0"))) }
+    }
+
+    @Test
+    @DisplayName("같은 페이지 토큰이 반복되면 무한히 묻지 않고 사용 불가 예외로 바꾼다")
+    fun repeated_page_token_throws_unavailable() {
+        val repeated = """{"results":[{"next_page_token":"tok"}]}"""
+        server.expect(requestTo("$baseUrl/v1/querybatch"))
+            .andRespond(withSuccess(repeated, MediaType.APPLICATION_JSON))
+        server.expect(requestTo("$baseUrl/v1/querybatch"))
+            .andRespond(withSuccess(repeated, MediaType.APPLICATION_JSON))
+
+        assertThrows<OsvUnavailableException> { client.findVulnerabilityIds(listOf(npm("a", "1.0.0"))) }
+    }
+
+    @Test
+    @DisplayName("취약점이 없는 페이지라도 새 토큰이면 계속 묻는다")
+    fun empty_page_with_new_token_keeps_asking() {
+        val packageReference = npm("lodash", "4.17.20")
+        server.expect(requestTo("$baseUrl/v1/querybatch"))
+            .andRespond(withSuccess("""{"results":[{"next_page_token":"t1"}]}""", MediaType.APPLICATION_JSON))
+        server.expect(requestTo("$baseUrl/v1/querybatch"))
+            .andRespond(withSuccess("""{"results":[{"next_page_token":"t2"}]}""", MediaType.APPLICATION_JSON))
+        server.expect(requestTo("$baseUrl/v1/querybatch"))
+            .andRespond(withSuccess("""{"results":[{"vulns":[{"id":"A-1"}]}]}""", MediaType.APPLICATION_JSON))
+
+        val result = client.findVulnerabilityIds(listOf(packageReference))
+
+        assertThat(result[packageReference]).containsExactly("A-1")
+        server.verify()
+    }
+
+    @Test
+    @DisplayName("공백뿐이거나 취약점 번호가 없는 200 응답은 사용 불가 예외로 바꾼다")
+    fun blank_or_idless_detail_throws_unavailable() {
+        server.expect(requestTo("$baseUrl/v1/vulns/BLANK-1"))
+            .andRespond(withSuccess(" \n ", MediaType.APPLICATION_JSON))
+        server.expect(requestTo("$baseUrl/v1/vulns/EMPTY-1"))
+            .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON))
+
+        assertThrows<OsvUnavailableException> { client.getVulnerability("BLANK-1") }
+        assertThrows<OsvUnavailableException> { client.getVulnerability("EMPTY-1") }
+    }
 }

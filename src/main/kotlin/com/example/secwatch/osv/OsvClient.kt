@@ -23,20 +23,25 @@ class OsvClient(
             vulnerabilityIds.getOrPut(packageReference) { mutableListOf() }
         }
 
+        val usedPageTokens = mutableMapOf<PackageReference, MutableSet<String>>()
         var pendingQueries = vulnerabilityIds.keys.map { packageReference -> OsvQuery(packageReference, null) }
         while (pendingQueries.isNotEmpty()) {
             val nextQueries = mutableListOf<OsvQuery>()
             for (queries in pendingQueries.chunked(MAX_BATCH_SIZE)) {
                 val results = queryBatch(queries).path("results")
-                if (results.size() != queries.size) throw OsvUnavailableException("OSV 응답 형식이 올바르지 않습니다.")
+                if (!results.isArray || results.size() != queries.size) throw OsvUnavailableException(INVALID_FORMAT_MESSAGE)
 
                 for ((index, query) in queries.withIndex()) {
                     val result = results.path(index)
+                    if (!result.isObject) throw OsvUnavailableException(INVALID_FORMAT_MESSAGE)
                     for (vulnerability in result.path("vulns")) {
                         vulnerabilityIds.getValue(query.packageReference).add(vulnerability.path("id").asText())
                     }
                     if (result.hasNonNull("next_page_token")) {
-                        nextQueries.add(OsvQuery(query.packageReference, result.get("next_page_token").asText()))
+                        val nextPageToken = result.get("next_page_token").asText()
+                        val usedTokens = usedPageTokens.getOrPut(query.packageReference) { mutableSetOf() }
+                        if (!usedTokens.add(nextPageToken)) throw OsvUnavailableException("OSV가 같은 페이지 토큰을 반복해서 돌려줍니다.")
+                        nextQueries.add(OsvQuery(query.packageReference, nextPageToken))
                     }
                 }
             }
@@ -56,14 +61,16 @@ class OsvClient(
             throw OsvUnavailableException("OSV 조회에 실패했습니다.", e)
         } ?: throw OsvUnavailableException("OSV 응답이 비어 있습니다.")
 
+        if (rawJson.isBlank()) throw OsvUnavailableException("OSV 응답이 비어 있습니다.")
         val node = try {
             objectMapper.readTree(rawJson)
         } catch (e: JsonProcessingException) {
             throw OsvUnavailableException("OSV 응답이 JSON이 아닙니다.", e)
         }
+        val vulnerabilityId = node.path("id").asText()
+        if (!node.isObject || vulnerabilityId.isBlank()) throw OsvUnavailableException(INVALID_FORMAT_MESSAGE)
         if (node.hasNonNull("withdrawn")) return null
 
-        val vulnerabilityId = node.path("id").asText()
         return OsvVulnerability(
             id = vulnerabilityId,
             aliases = node.path("aliases").map { alias -> alias.asText() },
@@ -111,6 +118,7 @@ class OsvClient(
 
     private companion object {
         const val MAX_BATCH_SIZE = 1000
+        const val INVALID_FORMAT_MESSAGE = "OSV 응답 형식이 올바르지 않습니다."
         val GONE_STATUS_CODES = setOf(404, 410)
     }
 }
