@@ -56,17 +56,26 @@ class CheckService(
         val fetched = mutableListOf<DependencyVulnerabilities>()
         for (dependency in dependencies) {
             val vulnerabilityIds = idsByPackageReference[dependency.toPackageReference()].orEmpty()
-            val vulnerabilities = mutableListOf<OsvVulnerability>()
-            for (vulnerabilityId in vulnerabilityIds) {
-                if (vulnerabilityId !in detailsById) {
-                    detailsById[vulnerabilityId] = vulnerabilitySource.getVulnerability(vulnerabilityId)
-                }
-                val vulnerability = detailsById[vulnerabilityId]
-                if (vulnerability != null) vulnerabilities.add(vulnerability)
-            }
+            val vulnerabilities = fetchDetails(vulnerabilityIds, detailsById)
             fetched.add(DependencyVulnerabilities(dependency.id!!, vulnerabilities))
         }
         return fetched
+    }
+
+    /** 같은 취약점 번호는 의존성이 달라도 한 번만 조회한다. 철회된 기록(null)은 건너뛴다. */
+    private fun fetchDetails(
+        vulnerabilityIds: List<String>,
+        detailsById: MutableMap<String, OsvVulnerability?>,
+    ): List<OsvVulnerability> {
+        val vulnerabilities = mutableListOf<OsvVulnerability>()
+        for (vulnerabilityId in vulnerabilityIds) {
+            if (vulnerabilityId !in detailsById) {
+                detailsById[vulnerabilityId] = vulnerabilitySource.getVulnerability(vulnerabilityId)
+            }
+            val vulnerability = detailsById[vulnerabilityId]
+            if (vulnerability != null) vulnerabilities.add(vulnerability)
+        }
+        return vulnerabilities
     }
 
     private fun persist(projectId: Long, fetched: List<DependencyVulnerabilities>): CheckResult {
