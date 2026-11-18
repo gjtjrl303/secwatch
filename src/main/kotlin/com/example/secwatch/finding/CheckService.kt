@@ -84,9 +84,13 @@ class CheckService(
     }
 
     private fun recordFailure(projectId: Long) {
-        transactionTemplate.executeWithoutResult { _ ->
-            val project = projectRepository.findById(projectId).orElse(null)
-            if (project != null) project.markCheckFailed(CHECK_ERROR)
+        try {
+            transactionTemplate.executeWithoutResult { _ ->
+                val project = projectRepository.findById(projectId).orElse(null)
+                if (project != null) project.markCheckFailed(CHECK_ERROR)
+            }
+        } catch (e: Exception) {
+            log.error("점검 실패를 기록하지 못했습니다. projectId={}", projectId, e)
         }
     }
 
