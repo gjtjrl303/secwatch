@@ -11,6 +11,8 @@ import com.example.secwatch.project.ProjectRepository
 import com.example.secwatch.support.FakeExternalApiIntegrationTest
 import java.time.LocalDateTime
 import java.util.concurrent.CyclicBarrier
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -210,13 +212,18 @@ class NewFindingNotifierTest : FakeExternalApiIntegrationTest() {
         fakeNotifier.delayMillis = 400
         val barrier = CyclicBarrier(2)
 
-        val threads = List(2) {
-            Thread {
-                barrier.await()
-                newFindingNotifier.notifyPending(project.id!!)
-            }.also { thread -> thread.start() }
+        val executor = Executors.newFixedThreadPool(2)
+        try {
+            val futures = List(2) {
+                executor.submit {
+                    barrier.await()
+                    newFindingNotifier.notifyPending(project.id!!)
+                }
+            }
+            futures.forEach { future -> future.get(10, TimeUnit.SECONDS) }
+        } finally {
+            executor.shutdownNow()
         }
-        threads.forEach { thread -> thread.join() }
 
         assertThat(fakeNotifier.sent).hasSize(1)
         assertThat(notifiedCount()).isEqualTo(1)
