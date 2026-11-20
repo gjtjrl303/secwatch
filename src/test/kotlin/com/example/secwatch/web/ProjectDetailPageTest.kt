@@ -160,9 +160,23 @@ class ProjectDetailPageTest : FakeExternalApiIntegrationTest() {
     fun status_select_saves_on_change_with_a_noscript_fallback() {
         saveFinding("GHSA-1")
 
+        val html = page().andReturn().response.contentAsString
+        // 필터 폼에도 같은 속성이 있어서 상태 변경 폼만 잘라서 확인한다
+        val statusForm = Regex("""<form[^>]*action="/projects/\d+/findings/\d+/status"[^>]*>(.*?)</form>""", RegexOption.DOT_MATCHES_ALL)
+            .find(html)!!.groupValues[1]
+        assertThat(statusForm).contains("<select name=\"status\" onchange=\"this.form.submit()\"")
+        assertThat(statusForm).contains("<noscript><button type=\"submit\">저장</button></noscript>")
+    }
+
+    @Test
+    @DisplayName("상태 선택 칸마다 패키지와 취약점 번호를 담은 접근 가능한 이름이 있다")
+    fun each_status_select_has_an_accessible_name() {
+        saveFinding("GHSA-1", packageName = "lodash")
+        saveFinding("GHSA-2", packageName = "express")
+
         page()
-            .andExpect(content().string(containsString("onchange=\"this.form.submit()\"")))
-            .andExpect(content().string(containsString("<noscript>")))
+            .andExpect(content().string(containsString("aria-label=\"상태 변경: lodash@4.17.20 GHSA-1\"")))
+            .andExpect(content().string(containsString("aria-label=\"상태 변경: express@4.17.20 GHSA-2\"")))
     }
 
     @Test

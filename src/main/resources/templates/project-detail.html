@@ -71,7 +71,8 @@
                             <form method="post" th:action="@{/projects/{pid}/findings/{fid}/status(pid=${project.id},fid=${f.id})}">
                                 <input type="hidden" name="filterSeverity" th:value="${filterSeverity}">
                                 <input type="hidden" name="filterStatus" th:value="${filterStatus}">
-                                <select name="status" onchange="this.form.submit()">
+                                <select name="status" onchange="this.form.submit()"
+                                        th:attr="aria-label='상태 변경: ' + ${g.packageName} + '@' + ${g.version} + ' ' + ${f.vulnerabilityId}">
                                     <option th:each="s : ${statuses}" th:value="${s.value}" th:text="${s.label}" th:selected="${s.value == f.status}"></option>
                                 </select>
                                 <noscript><button type="submit">저장</button></noscript>
