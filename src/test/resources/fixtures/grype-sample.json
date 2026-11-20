@@ -1,0 +1,19 @@
+{
+  "matches": [
+    {
+      "vulnerability": { "id": "GHSA-35jh-r3h4-6jhm", "severity": "High" },
+      "relatedVulnerabilities": [ { "id": "CVE-2021-23337" } ],
+      "artifact": { "name": "lodash", "version": "4.17.20", "type": "npm" }
+    },
+    {
+      "vulnerability": { "id": "CVE-2021-23337", "severity": "High" },
+      "relatedVulnerabilities": [ { "id": "GHSA-35jh-r3h4-6jhm" } ],
+      "artifact": { "name": "lodash", "version": "4.17.20", "type": "npm" }
+    },
+    {
+      "vulnerability": { "id": "GHSA-xxxx-yyyy-zzzz", "severity": "Low" },
+      "relatedVulnerabilities": [],
+      "artifact": { "name": "minimist", "version": "1.2.0", "type": "npm" }
+    }
+  ]
+}
