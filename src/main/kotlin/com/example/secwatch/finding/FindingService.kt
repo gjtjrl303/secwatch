@@ -24,13 +24,14 @@ class FindingService(
 
     @Transactional
     fun changeStatus(findingId: Long, newStatus: FindingStatus): Finding {
-        val finding = findingRepository.findWithDependency(findingId) ?: throw SecwatchException(ErrorCode.NOT_FOUND_FINDING)
+        val lockedFinding = findingRepository.findForUpdate(findingId) ?: throw SecwatchException(ErrorCode.NOT_FOUND_FINDING)
 
-        val oldStatus = finding.status
+        val oldStatus = lockedFinding.status
         if (oldStatus != newStatus) {
-            finding.changeStatus(newStatus)
-            findingStatusHistoryRepository.save(FindingStatusHistory(finding, oldStatus, newStatus, LocalDateTime.now()))
+            lockedFinding.changeStatus(newStatus)
+            findingStatusHistoryRepository.save(FindingStatusHistory(lockedFinding, oldStatus, newStatus, LocalDateTime.now()))
         }
-        return finding
+        // 응답에 패키지 정보가 필요해서 의존성과 함께 다시 읽는다
+        return findingRepository.findWithDependency(findingId) ?: throw SecwatchException(ErrorCode.NOT_FOUND_FINDING)
     }
 }
