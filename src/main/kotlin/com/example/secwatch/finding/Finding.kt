@@ -65,7 +65,15 @@ class Finding(
     var status: FindingStatus = FindingStatus.NEW
         protected set
 
+    @Column(name = "notified_at")
+    var notifiedAt: LocalDateTime? = null
+        protected set
+
     fun changeStatus(newStatus: FindingStatus) {
         status = newStatus
+    }
+
+    fun markNotified(notifiedAt: LocalDateTime) {
+        this.notifiedAt = notifiedAt
     }
 }
