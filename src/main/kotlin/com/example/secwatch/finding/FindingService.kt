@@ -22,6 +22,13 @@ class FindingService(
         return findings.sortedWith(compareBy<Finding>({ finding -> finding.severity.ordinal }, { finding -> finding.id }))
     }
 
+    /** 프로젝트 번호별로 열린 항목(새로 발견, 확인함)의 위험도별 개수를 돌려준다. */
+    @Transactional(readOnly = true)
+    fun openSeverityCounts(): Map<Long, Map<Severity, Long>> =
+        findingRepository.countBySeverity(FindingStatus.OPEN)
+            .groupBy({ count -> count.projectId }, { count -> count.severity to count.total })
+            .mapValues { (_, pairs) -> pairs.toMap() }
+
     @Transactional
     fun changeStatus(findingId: Long, newStatus: FindingStatus): Finding {
         val lockedFinding = findingRepository.findForUpdate(findingId) ?: throw SecwatchException(ErrorCode.NOT_FOUND_FINDING)

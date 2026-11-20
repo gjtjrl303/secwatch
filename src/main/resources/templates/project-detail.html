@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${project.name} + ' - secwatch'">secwatch</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<main>
+    <header class="top">
+        <h1 th:text="${project.name}"></h1>
+        <a th:href="@{/}">목록으로</a>
+    </header>
+    <p><span th:text="${project.domain}"></span>
+        <span class="muted" th:text="${project.webhookConfigured} ? '(디스코드 알림 설정됨)' : '(디스코드 알림 미설정)'"></span></p>
+    <p class="muted">마지막 점검:
+        <span th:if="${project.lastCheckedAt != null}" th:text="${#temporals.format(project.lastCheckedAt, 'yyyy-MM-dd HH:mm')}"></span>
+        <span th:if="${project.lastCheckedAt == null}">아직 없음</span></p>
+    <p th:if="${project.lastCheckError}" class="error" th:text="${project.lastCheckError}"></p>
+    <p th:if="${project.lastNotifyError}" class="error" th:text="${project.lastNotifyError}"></p>
+
+    <h2>취약점</h2>
+    <p th:if="${findings.empty}" class="muted">발견된 취약점이 없습니다.</p>
+    <div class="table-scroll" th:unless="${findings.empty}">
+    <table>
+        <thead><tr><th>위험도</th><th>패키지</th><th>내용</th><th>고쳐진 버전</th><th>상태</th></tr></thead>
+        <tbody>
+        <tr th:each="f : ${findings}">
+            <td><span th:class="'badge sev-' + ${#strings.toLowerCase(f.severity)}" th:text="${f.severityLabel}"></span></td>
+            <td class="nowrap" th:text="${f.packageName} + '@' + ${f.version}"></td>
+            <td class="wrap-anywhere">
+                <span th:text="${f.summary}"></span><br>
+                <a th:href="${f.referenceUrl}" rel="noopener noreferrer" target="_blank" th:text="${f.vulnerabilityId}"></a>
+            </td>
+            <td th:text="${f.fixedVersions.empty} ? '없음' : ${#strings.listJoin(f.fixedVersions, ', ')}"></td>
+            <td class="nowrap" th:text="${f.statusLabel}"></td>
+        </tr>
+        </tbody>
+    </table>
+    </div>
+</main>
+</body>
+</html>

@@ -7,7 +7,24 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 
+interface SeverityCount {
+    val projectId: Long
+    val severity: Severity
+    val total: Long
+}
+
 interface FindingRepository : JpaRepository<Finding, Long> {
+    /** 목록 화면이 프로젝트마다 따로 세지 않도록 한 번에 센다. */
+    @Query(
+        """
+        select f.project.id as projectId, f.severity as severity, count(f) as total
+        from Finding f
+        where f.status in :statuses
+        group by f.project.id, f.severity
+        """
+    )
+    fun countBySeverity(@Param("statuses") statuses: List<FindingStatus>): List<SeverityCount>
+
     /** 의존성을 함께 읽어서 항목마다 따로 조회하지 않는다. 거를 값이 null이면 그 조건은 쓰지 않는다. */
     @Query(
         """

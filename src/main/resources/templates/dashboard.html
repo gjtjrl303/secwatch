@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>secwatch</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<main>
+    <header class="top">
+        <h1>secwatch</h1>
+        <a class="button" th:href="@{/projects/new}">새 프로젝트 등록</a>
+    </header>
+    <p th:if="${rows.empty}" class="muted">등록된 프로젝트가 없습니다.</p>
+    <table th:unless="${rows.empty}">
+        <thead><tr><th>프로젝트</th><th>도메인</th><th>열린 취약점</th></tr></thead>
+        <tbody>
+        <tr th:each="r : ${rows}">
+            <td><a th:href="@{/projects/{id}(id=${r.id})}" th:text="${r.name}"></a></td>
+            <td th:text="${r.domain}"></td>
+            <td>
+                <span th:if="${r.counts.empty}" class="muted">없음</span>
+                <span th:each="c : ${r.counts}" th:class="'badge sev-' + ${#strings.toLowerCase(c.severity)}" th:text="${c.text}"></span>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</main>
+</body>
+</html>
