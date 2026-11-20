@@ -3,6 +3,7 @@ package com.example.secwatch.verify
 import com.example.secwatch.verify.GrypeComparer.Comparison
 import com.example.secwatch.verify.GrypeComparer.key
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 
@@ -64,5 +65,43 @@ class GrypeComparerTest {
             set(key("lodash", "4.17.20", "GHSA-35jh-r3h4-6jhm"), key("lodash", "4.17.20", "CVE-2021-23337")),
             set(key("minimist", "1.2.0", "GHSA-xxxx-yyyy-zzzz")),
         )
+    }
+
+    @Test
+    @DisplayName("matches가 빈 배열이면 발견 0건으로 읽는다")
+    fun empty_matches_array_is_zero_findings() {
+        assertThat(GrypeComparer.fromGrypeJson("""{"matches":[]}""")).isEmpty()
+    }
+
+    @Test
+    @DisplayName("matches가 없거나 배열이 아니면 0건으로 읽지 않고 실패시킨다")
+    fun missing_or_non_array_matches_fails_instead_of_reading_zero_findings() {
+        assertThatThrownBy { GrypeComparer.fromGrypeJson("{}") }.isInstanceOf(IllegalArgumentException::class.java)
+        assertThatThrownBy { GrypeComparer.fromGrypeJson("""{"matches":null}""") }.isInstanceOf(IllegalArgumentException::class.java)
+        assertThatThrownBy { GrypeComparer.fromGrypeJson("""{"matches":{}}""") }.isInstanceOf(IllegalArgumentException::class.java)
+    }
+
+    @Test
+    @DisplayName("별칭을 거쳐 간접으로 이어진 항목도 단독 목록에 넣지 않고 집계와 같게 분류한다")
+    fun indirectly_connected_items_are_not_listed_as_only_one_side() {
+        val ours = listOf(set(key("a", "1", "A"), key("a", "1", "B")))
+        val grype = listOf(set(key("a", "1", "A")), set(key("a", "1", "B"), key("a", "1", "C")), set(key("a", "1", "C")))
+
+        assertThat(GrypeComparer.compare(ours, grype)).isEqualTo(Comparison(both = 1, onlyOurs = 0, onlyGrype = 0))
+        val only = GrypeComparer.onlyItems(ours, grype)
+        assertThat(only.ours).isEmpty()
+        assertThat(only.grype).isEmpty()
+    }
+
+    @Test
+    @DisplayName("한쪽에만 있는 항목은 그 위치를 돌려준다")
+    fun only_items_return_the_positions_of_one_sided_items() {
+        val ours = listOf(set("a@1|X"), set("a@1|OnlyOurs"))
+        val grype = listOf(set("a@1|X"), set("a@1|OnlyGrype"), set("b@1|Y"))
+
+        val only = GrypeComparer.onlyItems(ours, grype)
+
+        assertThat(only.ours).containsExactly(1)
+        assertThat(only.grype).containsExactly(1, 2)
     }
 }

@@ -47,13 +47,13 @@ class JuiceShopComparisonTest : MySqlIntegrationTest() {
             .isNull()
 
         val ourFindings = ourFindings(projectId)
-        val ours = ourFindings.map { finding -> finding.keys }.toSet()
+        val ours = ourFindings.map { finding -> finding.keys }
         val grype = GrypeComparer.fromGrypeJson(grypeJson)
         val result = GrypeComparer.compare(ours, grype)
-        val grypeKeys = grype.flatten().toSet()
-        val onlyOurs = ourFindings.filter { finding -> finding.keys.none { key -> key in grypeKeys } }
-        val ourKeys = ours.flatten().toSet()
-        val onlyGrype = grype.filter { keys -> keys.none { key -> key in ourKeys } }
+        // 집계와 같은 묶음 분류를 써서, 별칭을 거쳐 이어진 항목이 단독 목록에 섞이지 않게 한다
+        val only = GrypeComparer.onlyItems(ours, grype)
+        val onlyOurs = only.ours.map { index -> ourFindings[index] }
+        val onlyGrype = only.grype.map { index -> grype[index] }
 
         val report = buildString {
             appendLine("packages parsed: ${imported.parsed} (skipped ${imported.skipped})")
