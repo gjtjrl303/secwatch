@@ -1,6 +1,6 @@
 package com.example.secwatch.dependency
 
-import com.example.secwatch.support.DbIntegrationTest
+import com.example.secwatch.support.FakeExternalApiIntegrationTest
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
@@ -19,7 +19,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 @AutoConfigureMockMvc
 @RecordApplicationEvents
 @DisplayName("의존성 등록 API")
-class DependencyControllerTest : DbIntegrationTest() {
+class DependencyControllerTest : FakeExternalApiIntegrationTest() {
     @Autowired lateinit var mockMvc: MockMvc
     @Autowired lateinit var objectMapper: ObjectMapper
     @Autowired lateinit var applicationEvents: ApplicationEvents

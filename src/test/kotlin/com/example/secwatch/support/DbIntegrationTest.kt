@@ -1,14 +1,18 @@
 package com.example.secwatch.support
 
+import java.time.Duration
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.awaitility.Awaitility
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.support.TransactionTemplate
 
@@ -19,8 +23,17 @@ abstract class DbIntegrationTest : MySqlIntegrationTest() {
     @Autowired
     lateinit var transactionManager: PlatformTransactionManager
 
+    @Autowired
+    @Qualifier("checkExecutor")
+    lateinit var checkExecutor: ThreadPoolTaskExecutor
+
+    /** 가져오기 뒤 백그라운드 점검이 남아 있으면 다음 테스트의 데이터와 섞이므로, 끝나기를 기다린 뒤 비운다. */
     @BeforeEach
     fun cleanDatabase() {
+        val pool = checkExecutor.threadPoolExecutor
+        Awaitility.await().atMost(Duration.ofSeconds(30)).until {
+            pool.activeCount == 0 && pool.queue.isEmpty() && pool.taskCount == pool.completedTaskCount
+        }
         jdbcTemplate.update("delete from project")
     }
 

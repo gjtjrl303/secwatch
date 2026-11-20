@@ -2,14 +2,14 @@ package com.example.secwatch.dependency
 
 import com.example.secwatch.project.Project
 import com.example.secwatch.project.ProjectRepository
-import com.example.secwatch.support.DbIntegrationTest
+import com.example.secwatch.support.FakeExternalApiIntegrationTest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 
 @DisplayName("의존성 등록 동시성")
-class DependencyImporterConcurrencyTest : DbIntegrationTest() {
+class DependencyImporterConcurrencyTest : FakeExternalApiIntegrationTest() {
     @Autowired lateinit var dependencyImporter: DependencyImporter
     @Autowired lateinit var projectRepository: ProjectRepository
 
