@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>오류 - secwatch</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<main>
+    <h1>문제가 생겼습니다</h1>
+    <p class="error" th:text="${#strings.isEmpty(message)} ? '요청을 처리하지 못했습니다.' : ${message}"></p>
+    <a th:href="@{/}">목록으로</a>
+</main>
+</body>
+</html>

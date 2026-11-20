@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>새 프로젝트 등록 - secwatch</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<main>
+    <header class="top">
+        <h1>새 프로젝트 등록</h1>
+        <a th:href="@{/}">목록으로</a>
+    </header>
+    <p th:if="${error}" class="error" th:text="${error}"></p>
+    <form method="post" th:action="@{/projects}">
+        <label for="name">프로젝트 이름</label>
+        <input type="text" id="name" name="name" required th:value="${name}">
+        <label for="domain">도메인</label>
+        <input type="text" id="domain" name="domain" required placeholder="example.com" th:value="${domain}">
+        <label for="webhookUrl">디스코드 웹훅 주소 (선택)</label>
+        <input type="password" id="webhookUrl" name="webhookUrl" autocomplete="off" placeholder="https://discord.com/api/webhooks/...">
+        <p class="muted">웹훅 주소는 비밀값이라 등록한 뒤에는 화면에 다시 보여주지 않습니다.</p>
+        <label for="lockfile">package-lock.json 내용 (선택)</label>
+        <textarea id="lockfile" name="lockfile" th:text="${lockfile}"></textarea>
+        <p class="muted">소스 코드는 받지 않고 라이브러리 이름과 버전만 읽습니다.</p>
+        <button type="submit">등록</button>
+    </form>
+</main>
+</body>
+</html>
