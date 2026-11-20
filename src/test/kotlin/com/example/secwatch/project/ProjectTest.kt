@@ -3,6 +3,7 @@ package com.example.secwatch.project
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
+import java.time.LocalDateTime
 
 class ProjectTest {
 
@@ -25,5 +26,31 @@ class ProjectTest {
         project.changeWebhook("https://discord.com/api/webhooks/1/a")
 
         assertThat(project.webhookUrl).isEqualTo("https://discord.com/api/webhooks/1/a")
+    }
+
+    @Test
+    @DisplayName("점검에 성공하면 점검 시각을 기록하고 이전 오류를 지운다")
+    fun markChecked_records_time_and_clears_error() {
+        val project = Project("모꼬지", "mokkoji.kr")
+        project.markCheckFailed("실패")
+        val checkedAt = LocalDateTime.of(2026, 11, 16, 9, 0)
+
+        project.markChecked(checkedAt)
+
+        assertThat(project.lastCheckedAt).isEqualTo(checkedAt)
+        assertThat(project.lastCheckError).isNull()
+    }
+
+    @Test
+    @DisplayName("점검에 실패하면 오류를 기록하고 점검 시각은 그대로 둔다")
+    fun markCheckFailed_records_error_and_keeps_checked_time() {
+        val project = Project("모꼬지", "mokkoji.kr")
+        val checkedAt = LocalDateTime.of(2026, 11, 16, 9, 0)
+        project.markChecked(checkedAt)
+
+        project.markCheckFailed("실패")
+
+        assertThat(project.lastCheckError).isEqualTo("실패")
+        assertThat(project.lastCheckedAt).isEqualTo(checkedAt)
     }
 }
