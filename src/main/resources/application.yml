@@ -14,3 +14,7 @@ server:
   tomcat:
     # 실제 package-lock.json은 Tomcat 기본 폼 한도(2MB)를 자주 넘는다.
     max-http-form-post-size: 20MB
+secwatch:
+  recheck:
+    # 매일 재점검 시각(초 분 시 일 월 요일, Asia/Seoul 기준). "-"로 두면 끈다.
+    cron: "0 0 9 * * *"
