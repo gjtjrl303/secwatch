@@ -30,8 +30,10 @@ class FindingService(
             .mapValues { (_, pairs) -> pairs.toMap() }
 
     @Transactional
-    fun changeStatus(findingId: Long, newStatus: FindingStatus): Finding {
+    fun changeStatus(findingId: Long, newStatus: FindingStatus, projectId: Long? = null): Finding {
         val lockedFinding = findingRepository.findForUpdate(findingId) ?: throw SecwatchException(ErrorCode.NOT_FOUND_FINDING)
+        // 프로젝트 번호를 함께 받은 경우에는 그 프로젝트의 항목만 바꿀 수 있다
+        if (projectId != null && lockedFinding.project.id != projectId) throw SecwatchException(ErrorCode.NOT_FOUND_FINDING)
 
         val oldStatus = lockedFinding.status
         if (oldStatus != newStatus) {
