@@ -15,10 +15,12 @@ import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import java.time.LocalDateTime
+import org.hibernate.annotations.DynamicUpdate
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 
 @Entity
+@DynamicUpdate
 @Table(name = "finding")
 class Finding(
     @ManyToOne(fetch = FetchType.LAZY)
@@ -62,4 +64,8 @@ class Finding(
     @Column(nullable = false, length = 20)
     var status: FindingStatus = FindingStatus.NEW
         protected set
+
+    fun changeStatus(newStatus: FindingStatus) {
+        status = newStatus
+    }
 }
