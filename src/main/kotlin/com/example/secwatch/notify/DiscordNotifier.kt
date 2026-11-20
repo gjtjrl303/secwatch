@@ -5,19 +5,28 @@ import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.RestClientException
+import org.springframework.web.util.UriComponentsBuilder
 
 class DiscordNotifier(private val restClient: RestClient) : Notifier {
     private val log = LoggerFactory.getLogger(DiscordNotifier::class.java)
 
-    /** 예외 메시지와 원인과 로그에 웹훅 주소를 넣지 않는다. 주소가 곧 비밀 토큰이기 때문이다. */
+    /**
+     * 예외 메시지와 원인과 로그에 웹훅 주소를 넣지 않는다. 주소가 곧 비밀 토큰이기 때문이다.
+     * wait=true를 붙이지 않으면 디스코드는 저장되지 않은 메시지도 오류 없이 응답하므로,
+     * 저장 확인을 기다리게 하고 만들어진 메시지가 응답에 없으면 실패로 본다.
+     */
     override fun send(webhookUrl: String, message: String) {
         try {
-            restClient.post()
-                .uri(URI.create(webhookUrl))
+            val createdMessage = restClient.post()
+                .uri(UriComponentsBuilder.fromUri(URI.create(webhookUrl)).replaceQueryParam("wait", "true").build(true).toUri())
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(payload(message))
                 .retrieve()
-                .toBodilessEntity()
+                .body(String::class.java)
+            if (createdMessage.isNullOrBlank()) {
+                log.warn("디스코드가 만들어진 메시지 없이 응답했습니다.")
+                throw NotifyFailedException(FAILURE_MESSAGE)
+            }
         } catch (e: RestClientException) {
             log.warn("디스코드 웹훅 호출에 실패했습니다. 예외={}", e.javaClass.simpleName)
             throw NotifyFailedException(FAILURE_MESSAGE)
