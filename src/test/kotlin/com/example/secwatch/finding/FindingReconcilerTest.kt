@@ -105,4 +105,45 @@ class FindingReconcilerTest : FakeOsvIntegrationTest() {
         assertThat(created).isEmpty()
         assertThat(count("finding")).isEqualTo(0)
     }
+
+    @Test
+    @DisplayName("대표 번호가 열 제한(100자)을 넘는 취약점은 건너뛰고 나머지는 저장한다")
+    fun vulnerability_with_too_long_id_is_skipped() {
+        val tooLongId = "GHSA-" + "x".repeat(96)
+
+        val created = findingReconciler.reconcile(
+            dependencyId,
+            listOf(osvVulnerability(tooLongId), osvVulnerability("GHSA-2")),
+        )
+
+        assertThat(created).hasSize(1)
+        assertThat(count("finding")).isEqualTo(1)
+        assertThat(keys()).containsExactly("GHSA-2")
+    }
+
+    @Test
+    @DisplayName("별칭이 열 제한(150자)을 넘으면 그 별칭만 빼고 항목은 저장한다")
+    fun alias_longer_than_the_column_limit_is_dropped() {
+        val tooLongAlias = "SNYK-" + "X".repeat(146)
+
+        val created = findingReconciler.reconcile(
+            dependencyId,
+            listOf(osvVulnerability("GHSA-1", listOf("CVE-2021-1", tooLongAlias))),
+        )
+
+        assertThat(created).hasSize(1)
+        assertThat(keys()).containsExactlyInAnyOrder("GHSA-1", "CVE-2021-1")
+    }
+
+    @Test
+    @DisplayName("열 제한과 같은 길이(번호 100자, 별칭 150자)는 그대로 저장한다")
+    fun values_exactly_at_the_column_limit_are_stored() {
+        val maxId = "G".repeat(100)
+        val maxAlias = "A".repeat(150)
+
+        val created = findingReconciler.reconcile(dependencyId, listOf(osvVulnerability(maxId, listOf(maxAlias))))
+
+        assertThat(created).hasSize(1)
+        assertThat(keys()).containsExactlyInAnyOrder(maxId, maxAlias)
+    }
 }
