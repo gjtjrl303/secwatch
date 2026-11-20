@@ -86,7 +86,11 @@ class CheckService(
             for (item in fetched) {
                 newFindingIds.addAll(findingReconciler.reconcile(item.dependencyId, item.vulnerabilities))
             }
-            project.markChecked(LocalDateTime.now())
+            // 조회하는 동안 의존성이 바뀌었으면 바뀐 것은 아직 점검하지 않았으므로 완료로 표시하지 않는다. 다음 점검이 갱신한다.
+            val currentDependencyIds = dependencyRepository.findByProjectId(projectId).map { dependency -> dependency.id!! }.toSet()
+            if (currentDependencyIds == fetched.map { item -> item.dependencyId }.toSet()) {
+                project.markChecked(LocalDateTime.now())
+            }
             CheckResult(newFindingIds)
         }
         return result!!

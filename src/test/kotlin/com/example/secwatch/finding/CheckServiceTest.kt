@@ -96,6 +96,21 @@ class CheckServiceTest : FakeExternalApiIntegrationTest() {
     }
 
     @Test
+    @DisplayName("점검하는 동안 의존성이 바뀌면 점검 완료로 표시하지 않고 기존 오류도 지우지 않는다")
+    fun dependencies_changed_during_the_check_do_not_mark_it_checked() {
+        jdbcTemplate.update("update project set last_check_error = ? where id = ?", errorMessage, projectId)
+        fakeVulnerabilitySource.onFindVulnerabilityIds = {
+            val project = projectRepository.findById(projectId).get()
+            dependencyRepository.save(Dependency(project, "npm", "express", "4.0.0"))
+        }
+
+        checkService.check(projectId)
+
+        assertThat(lastCheckedAt()).isNull()
+        assertThat(lastCheckError()).isEqualTo(errorMessage)
+    }
+
+    @Test
     @DisplayName("상세 조회가 하나라도 실패하면 아무것도 저장하지 않는다")
     fun partial_detail_failure_persists_nothing() {
         fakeVulnerabilitySource.idsByPackageReference = mapOf(lodashReference to listOf("GHSA-1", "GHSA-2"))

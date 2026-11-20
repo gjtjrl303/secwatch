@@ -95,6 +95,7 @@ class CheckTriggerTest : FakeExternalApiIntegrationTest() {
         Awaitility.await().during(Duration.ofMillis(800)).atMost(Duration.ofSeconds(3)).untilAsserted {
             assertThat(count("finding")).isEqualTo(0)
             assertThat(fakeNotifier.sent).isEmpty()
+            assertThat(projectRepository.findById(projectId).orElseThrow().lastCheckedAt).isNull()
         }
     }
 
