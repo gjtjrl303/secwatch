@@ -157,4 +157,18 @@ class ProjectControllerTest : MySqlIntegrationTest() {
             .andExpect(jsonPath("$.code").value(40001))
         register("x", "a".repeat(252) + ".kr").andExpect(status().isCreated)
     }
+
+    @Test
+    @DisplayName("마지막 점검 시각과 점검 오류와 알림 오류를 함께 돌려준다")
+    fun list_includes_check_and_notify_status() {
+        register("a", "a.example.com").andExpect(status().isCreated)
+        jdbcTemplate.update(
+            "update project set last_checked_at = '2026-11-20 09:00:00', last_check_error = '점검 실패', last_notify_error = '알림 실패'"
+        )
+
+        mockMvc.perform(get("/api/projects"))
+            .andExpect(jsonPath("$.data[0].lastCheckedAt").isNotEmpty)
+            .andExpect(jsonPath("$.data[0].lastCheckError").value("점검 실패"))
+            .andExpect(jsonPath("$.data[0].lastNotifyError").value("알림 실패"))
+    }
 }

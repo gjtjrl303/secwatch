@@ -53,4 +53,25 @@ class ProjectTest {
         assertThat(project.lastCheckError).isEqualTo("실패")
         assertThat(project.lastCheckedAt).isEqualTo(checkedAt)
     }
+
+    @Test
+    @DisplayName("알림에 성공하면 이전 알림 오류를 지운다")
+    fun markNotifySucceeded_clears_error() {
+        val project = Project("모꼬지", "mokkoji.kr")
+        project.markNotifyFailed("실패")
+
+        project.markNotifySucceeded()
+
+        assertThat(project.lastNotifyError).isNull()
+    }
+
+    @Test
+    @DisplayName("알림에 실패하면 오류를 기록한다")
+    fun markNotifyFailed_records_error() {
+        val project = Project("모꼬지", "mokkoji.kr")
+
+        project.markNotifyFailed("실패")
+
+        assertThat(project.lastNotifyError).isEqualTo("실패")
+    }
 }

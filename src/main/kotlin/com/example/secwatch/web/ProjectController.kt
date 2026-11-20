@@ -4,6 +4,7 @@ import com.example.secwatch.common.ApiSuccessResponse
 import com.example.secwatch.project.Project
 import com.example.secwatch.project.ProjectManagement
 import com.example.secwatch.project.ProjectRegistration
+import java.time.LocalDateTime
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -15,7 +16,14 @@ import org.springframework.web.bind.annotation.RestController
 
 data class RegisterProjectRequest(val name: String, val domain: String)
 
-data class ProjectResponse(val id: Long, val name: String, val domain: String)
+data class ProjectResponse(
+    val id: Long,
+    val name: String,
+    val domain: String,
+    val lastCheckedAt: LocalDateTime?,
+    val lastCheckError: String?,
+    val lastNotifyError: String?,
+)
 
 @RestController
 @RequestMapping("/api/projects")
@@ -37,5 +45,12 @@ class ProjectController(
     fun get(@PathVariable id: Long): ApiSuccessResponse<ProjectResponse> =
         ApiSuccessResponse(projectManagement.get(id).toResponse())
 
-    private fun Project.toResponse() = ProjectResponse(id!!, name, domain)
+    private fun Project.toResponse() = ProjectResponse(
+        id = id!!,
+        name = name,
+        domain = domain,
+        lastCheckedAt = lastCheckedAt,
+        lastCheckError = lastCheckError,
+        lastNotifyError = lastNotifyError,
+    )
 }

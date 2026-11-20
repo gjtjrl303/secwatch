@@ -5,7 +5,7 @@ import com.example.secwatch.dependency.Dependency
 import com.example.secwatch.dependency.DependencyRepository
 import com.example.secwatch.project.Project
 import com.example.secwatch.project.ProjectRepository
-import com.example.secwatch.support.FakeOsvIntegrationTest
+import com.example.secwatch.support.FakeExternalApiIntegrationTest
 import com.example.secwatch.support.osvVulnerability
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 
 @DisplayName("취약점 점검 서비스")
-class CheckServiceTest : FakeOsvIntegrationTest() {
+class CheckServiceTest : FakeExternalApiIntegrationTest() {
     @Autowired lateinit var checkService: CheckService
     @Autowired lateinit var projectRepository: ProjectRepository
     @Autowired lateinit var dependencyRepository: DependencyRepository

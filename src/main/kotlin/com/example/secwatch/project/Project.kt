@@ -34,6 +34,10 @@ class Project(name: String, domain: String) {
     var lastCheckError: String? = null
         protected set
 
+    @Column(name = "last_notify_error")
+    var lastNotifyError: String? = null
+        protected set
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null
@@ -55,5 +59,13 @@ class Project(name: String, domain: String) {
 
     fun markCheckFailed(errorMessage: String) {
         lastCheckError = errorMessage
+    }
+
+    fun markNotifySucceeded() {
+        lastNotifyError = null
+    }
+
+    fun markNotifyFailed(errorMessage: String) {
+        lastNotifyError = errorMessage
     }
 }
