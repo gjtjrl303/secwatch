@@ -25,12 +25,19 @@ abstract class DbIntegrationTest : MySqlIntegrationTest() {
     }
 
     /** 다른 트랜잭션이 프로젝트 행을 잠그고 [uncommitted]를 커밋 없이 실행하는 동안 [action]을 두 번째 스레드에서 시작한다. [action]은 기다렸다가 첫 트랜잭션이 커밋된 뒤에 이어진다. */
-    fun <T> blockedWhileProjectIsLocked(projectId: Long, uncommitted: () -> Unit = {}, action: () -> T): T {
+    fun <T> blockedWhileProjectIsLocked(projectId: Long, uncommitted: () -> Unit = {}, action: () -> T): T =
+        blockedWhileRowIsLocked("select id from project where id = ? for update", projectId, uncommitted, action)
+
+    /** 다른 트랜잭션이 발견 항목 행을 잠그고 [uncommitted]를 커밋 없이 실행하는 동안 [action]을 두 번째 스레드에서 시작한다. */
+    fun <T> blockedWhileFindingIsLocked(findingId: Long, uncommitted: () -> Unit = {}, action: () -> T): T =
+        blockedWhileRowIsLocked("select id from finding where id = ? for update", findingId, uncommitted, action)
+
+    private fun <T> blockedWhileRowIsLocked(lockSql: String, id: Long, uncommitted: () -> Unit, action: () -> T): T {
         val locked = CountDownLatch(1)
         val release = CountDownLatch(1)
         Thread {
             TransactionTemplate(transactionManager).executeWithoutResult {
-                jdbcTemplate.queryForObject("select id from project where id = ? for update", Long::class.java, projectId)
+                jdbcTemplate.queryForObject(lockSql, Long::class.java, id)
                 uncommitted()
                 locked.countDown()
                 release.await(30, TimeUnit.SECONDS)
