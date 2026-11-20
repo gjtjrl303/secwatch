@@ -20,25 +20,87 @@
     <p th:if="${project.lastCheckError}" class="error" th:text="${project.lastCheckError}"></p>
     <p th:if="${project.lastNotifyError}" class="error" th:text="${project.lastNotifyError}"></p>
 
+    <section class="summary">
+        <p class="summary-title" th:text="'열린 취약점 ' + ${openTotal} + '건'"></p>
+        <p class="muted" th:text="'전체 ' + ${totalAll} + '건'"></p>
+        <p>
+            <span th:each="b : ${badges}" th:class="'badge big sev-' + ${#strings.toLowerCase(b.severity)}" th:text="${b.text}"></span>
+            <span th:if="${badges.empty}" class="muted">열린 취약점이 없습니다.</span>
+        </p>
+    </section>
+
     <h2>취약점</h2>
-    <p th:if="${findings.empty}" class="muted">발견된 취약점이 없습니다.</p>
-    <div class="table-scroll" th:unless="${findings.empty}">
-    <table>
-        <thead><tr><th>위험도</th><th>패키지</th><th>내용</th><th>고쳐진 버전</th><th>상태</th></tr></thead>
-        <tbody>
-        <tr th:each="f : ${findings}">
-            <td><span th:class="'badge sev-' + ${#strings.toLowerCase(f.severity)}" th:text="${f.severityLabel}"></span></td>
-            <td class="nowrap" th:text="${f.packageName} + '@' + ${f.version}"></td>
-            <td class="wrap-anywhere">
-                <span th:text="${f.summary}"></span><br>
-                <a th:href="${f.referenceUrl}" rel="noopener noreferrer" target="_blank" th:text="${f.vulnerabilityId}"></a>
-            </td>
-            <td th:text="${f.fixedVersions.empty} ? '없음' : ${#strings.listJoin(f.fixedVersions, ', ')}"></td>
-            <td class="nowrap" th:text="${f.statusLabel}"></td>
-        </tr>
-        </tbody>
-    </table>
-    </div>
+    <form method="get" class="filters" th:action="@{/projects/{id}(id=${project.id})}">
+        <label>위험도
+            <select name="severity" onchange="this.form.submit()">
+                <option th:each="o : ${severityOptions}" th:value="${o.value}" th:text="${o.label}" th:selected="${o.value == filterSeverity}"></option>
+            </select>
+        </label>
+        <label>상태
+            <select name="status" onchange="this.form.submit()">
+                <option th:each="o : ${statusOptions}" th:value="${o.value}" th:text="${o.label}" th:selected="${o.value == filterStatus}"></option>
+            </select>
+        </label>
+        <noscript><button type="submit">적용</button></noscript>
+        <span class="muted" th:text="${shownTotal} + '건 표시'"></span>
+    </form>
+
+    <p th:if="${groups.empty and totalAll == 0}" class="muted">발견된 취약점이 없습니다.</p>
+    <p th:if="${groups.empty and totalAll > 0}" class="muted">조건에 맞는 취약점이 없습니다.</p>
+
+    <section class="pkg" th:each="g : ${groups}">
+        <details open>
+            <summary>
+                <strong th:text="${g.packageName} + '@' + ${g.version}"></strong>
+                <span th:class="'badge sev-' + ${#strings.toLowerCase(g.highestSeverity)}" th:text="${g.highestLabel}"></span>
+                <span class="muted" th:text="${g.count} + '건'"></span>
+            </summary>
+            <div class="table-scroll">
+                <table>
+                    <thead><tr><th>위험도</th><th>내용</th><th>고쳐진 버전</th><th>상태</th></tr></thead>
+                    <tbody>
+                    <tr th:each="f : ${g.findings}" th:id="'f' + ${f.id}"
+                        th:classappend="${f.status == 'RESOLVED' or f.status == 'NOT_APPLICABLE'} ? 'closed'">
+                        <td><span th:class="'badge sev-' + ${#strings.toLowerCase(f.severity)}" th:text="${f.severityLabel}"></span></td>
+                        <td class="wrap-anywhere">
+                            <span th:text="${f.summary}"></span><br>
+                            <a th:href="${f.referenceUrl}" rel="noopener noreferrer" target="_blank" th:text="${f.vulnerabilityId}"></a>
+                        </td>
+                        <td th:text="${f.fixedVersions.empty} ? '없음' : ${#strings.listJoin(f.fixedVersions, ', ')}"></td>
+                        <td>
+                            <form method="post" th:action="@{/projects/{pid}/findings/{fid}/status(pid=${project.id},fid=${f.id})}">
+                                <input type="hidden" name="filterSeverity" th:value="${filterSeverity}">
+                                <input type="hidden" name="filterStatus" th:value="${filterStatus}">
+                                <select name="status" onchange="this.form.submit()">
+                                    <option th:each="s : ${statuses}" th:value="${s.value}" th:text="${s.label}" th:selected="${s.value == f.status}"></option>
+                                </select>
+                                <noscript><button type="submit">저장</button></noscript>
+                            </form>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </details>
+    </section>
+
+    <h2>의존성 다시 가져오기</h2>
+    <p th:if="${importError}" class="error" th:text="${importError}"></p>
+    <form method="post" th:action="@{/projects/{id}/dependencies(id=${project.id})}">
+        <label for="lockfile">package-lock.json 내용</label>
+        <textarea id="lockfile" name="lockfile" required></textarea>
+        <p class="muted">버전이 바뀌거나 빠진 라이브러리의 이전 항목과 상태 이력은 함께 지워집니다.</p>
+        <button type="submit">다시 가져오기</button>
+    </form>
+
+    <h2>디스코드 알림</h2>
+    <p th:if="${webhookError}" class="error" th:text="${webhookError}"></p>
+    <form method="post" th:action="@{/projects/{id}/notification(id=${project.id})}">
+        <label for="webhookUrl">웹훅 주소</label>
+        <input type="password" id="webhookUrl" name="webhookUrl" autocomplete="off" required placeholder="https://discord.com/api/webhooks/...">
+        <p class="muted">웹훅 주소는 비밀값이라 저장한 뒤에는 화면에 다시 보여주지 않습니다. 새 주소를 넣으면 바뀝니다.</p>
+        <button type="submit">저장</button>
+    </form>
 </main>
 </body>
 </html>

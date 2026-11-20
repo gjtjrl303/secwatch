@@ -21,3 +21,19 @@ textarea { min-height: 160px; font-family: ui-monospace, monospace; }
 .sev-moderate { background: #8a6d00; }
 .sev-low { background: #2b7a3e; }
 .sev-unclassified { background: #5f6b76; }
+.badge.big { font-size: 1em; padding: 4px 12px; margin-bottom: 4px; }
+
+.summary { margin: 16px 0; padding: 12px 16px; border: 1px solid #8884; border-radius: 8px; }
+.summary p { margin: 4px 0; }
+.summary-title { font-size: 1.25em; font-weight: 700; }
+
+.filters { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin: 8px 0 16px; }
+.filters label { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-weight: 600; }
+select { padding: 4px 6px; font: inherit; }
+
+.pkg { margin: 12px 0; border: 1px solid #8884; border-radius: 8px; padding: 4px 12px; }
+.pkg summary { cursor: pointer; padding: 8px 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pkg table { margin-top: 0; min-width: 560px; }
+.pkg td form { margin: 0; }
+tr.closed td { opacity: 0.5; }
+tr:target td { background: #ffd54f33; }
