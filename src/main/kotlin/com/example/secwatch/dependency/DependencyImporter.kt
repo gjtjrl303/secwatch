@@ -2,7 +2,7 @@ package com.example.secwatch.dependency
 
 import com.example.secwatch.common.ErrorCode
 import com.example.secwatch.common.SecwatchException
-import com.example.secwatch.dependency.parser.DependencyParser
+import com.example.secwatch.dependency.parser.DependencyFormatSelector
 import com.example.secwatch.project.ProjectRepository
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
@@ -12,7 +12,7 @@ data class ImportResult(val parsed: Int, val skipped: Int)
 
 @Service
 class DependencyImporter(
-    private val dependencyParser: DependencyParser,
+    private val dependencyFormatSelector: DependencyFormatSelector,
     private val projectRepository: ProjectRepository,
     private val dependencyRepository: DependencyRepository,
     private val applicationEventPublisher: ApplicationEventPublisher,
@@ -22,7 +22,7 @@ class DependencyImporter(
         if (content.isBlank()) throw SecwatchException(ErrorCode.EMPTY_DEPENDENCIES)
         val project = projectRepository.findForUpdate(projectId) ?: throw SecwatchException(ErrorCode.NOT_FOUND_PROJECT)
 
-        val parsed = dependencyParser.parse(content)
+        val parsed = dependencyFormatSelector.parse(content)
         val requested = parsed.packages.toSet()
         val existing = dependencyRepository.findByProjectId(projectId)
         val existingReferences = existing.map { dependency -> dependency.toPackageReference() }.toSet()
