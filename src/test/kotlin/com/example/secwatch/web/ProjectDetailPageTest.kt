@@ -18,8 +18,10 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.mock.web.MockMultipartFile
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl
@@ -251,7 +253,7 @@ class ProjectDetailPageTest : FakeExternalApiIntegrationTest() {
         mockMvc.perform(post("/projects/${project.id}/dependencies").param("lockfile", "not json"))
             .andExpect(status().isOk)
             .andExpect(view().name("project-detail"))
-            .andExpect(content().string(containsString("지원하지 않는 형식입니다. package-lock.json 내용을 붙여넣어 주세요.")))
+            .andExpect(content().string(containsString("지원하지 않는 형식입니다. package-lock.json, Gradle dependencies 출력, CycloneDX SBOM 중 하나를 넣어 주세요.")))
             .andExpect(content().string(containsString("GHSA-1")))
 
         val names = jdbcTemplate.queryForList("select name from dependency where project_id = ?", String::class.java, project.id)
@@ -263,7 +265,86 @@ class ProjectDetailPageTest : FakeExternalApiIntegrationTest() {
     fun blank_reimport_shows_the_message() {
         mockMvc.perform(post("/projects/${project.id}/dependencies").param("lockfile", "   "))
             .andExpect(status().isOk)
-            .andExpect(content().string(containsString("의존성 목록을 붙여넣어 주세요.")))
+            .andExpect(content().string(containsString("의존성 목록을 붙여넣거나 파일을 올려 주세요.")))
+    }
+
+    private fun upload(content: String) = MockMultipartFile("file", "deps.txt", "text/plain", content.toByteArray())
+
+    private fun dependencyNames() =
+        jdbcTemplate.queryForList("select name from dependency where project_id = ? order by name", String::class.java, project.id)
+
+    @Test
+    @DisplayName("파일로 올려도 의존성을 다시 가져온다")
+    fun reimport_from_an_uploaded_file() {
+        mockMvc.perform(multipart("/projects/${project.id}/dependencies").file(upload(lockfile)))
+            .andExpect(status().is3xxRedirection)
+            .andExpect(redirectedUrl("/projects/${project.id}"))
+
+        assertThat(dependencyNames()).containsExactly("express")
+    }
+
+    @Test
+    @DisplayName("파일과 붙여넣은 내용이 둘 다 있으면 파일을 쓴다")
+    fun uploaded_file_wins_over_pasted_text() {
+        val pasted = """{"lockfileVersion":3,"packages":{"":{},"node_modules/pasted":{"version":"1.0.0"}}}"""
+
+        mockMvc.perform(multipart("/projects/${project.id}/dependencies").file(upload(lockfile)).param("lockfile", pasted))
+            .andExpect(status().is3xxRedirection)
+
+        assertThat(dependencyNames()).containsExactly("express")
+    }
+
+    @Test
+    @DisplayName("빈 파일을 고르고 내용을 붙여넣으면 붙여넣은 내용을 쓴다")
+    fun empty_file_falls_back_to_pasted_text() {
+        mockMvc.perform(multipart("/projects/${project.id}/dependencies").file(upload("")).param("lockfile", lockfile))
+            .andExpect(status().is3xxRedirection)
+
+        assertThat(dependencyNames()).containsExactly("express")
+    }
+
+    @Test
+    @DisplayName("파일 맨 앞에 바이트 순서 표시(BOM)가 있어도 읽는다")
+    fun uploaded_file_with_bom_is_read() {
+        mockMvc.perform(multipart("/projects/${project.id}/dependencies").file(upload("\uFEFF$lockfile")))
+            .andExpect(status().is3xxRedirection)
+
+        assertThat(dependencyNames()).containsExactly("express")
+    }
+
+    @Test
+    @DisplayName("Gradle dependencies 출력을 파일로 올려도 읽는다")
+    fun gradle_output_file_is_read() {
+        mockMvc.perform(multipart("/projects/${project.id}/dependencies").file(upload("runtimeClasspath\n\\--- org.yaml:snakeyaml:1.33\n")))
+            .andExpect(status().is3xxRedirection)
+
+        assertThat(dependencyNames()).containsExactly("org.yaml:snakeyaml")
+    }
+
+    @Test
+    @DisplayName("올린 파일이 지원하지 않는 형식이면 안내 문구를 보여주고 목록은 그대로다")
+    fun unsupported_uploaded_file_shows_the_message() {
+        saveFinding("GHSA-1", packageName = "lodash")
+
+        mockMvc.perform(multipart("/projects/${project.id}/dependencies").file(upload("hello")))
+            .andExpect(status().isOk)
+            .andExpect(view().name("project-detail"))
+            .andExpect(content().string(containsString("지원하지 않는 형식입니다.")))
+
+        assertThat(dependencyNames()).containsExactly("lodash")
+    }
+
+    @Test
+    @DisplayName("다시 가져오기 폼이 세 가지 형식과 파일 올리기를 안내한다")
+    fun reimport_form_explains_the_three_formats() {
+        page()
+            .andExpect(content().string(containsString("package-lock.json")))
+            .andExpect(content().string(containsString("./gradlew dependencies")))
+            .andExpect(content().string(containsString("CycloneDX SBOM")))
+            .andExpect(content().string(containsString("enctype=\"multipart/form-data\"")))
+            .andExpect(content().string(containsString("type=\"file\"")))
+            .andExpect(content().string(containsString("size > 20971520 ? '파일이 너무 큽니다. 20MB 이하의 파일을 올려 주세요.' : ''")))
+            .andExpect(content().string(containsString("20MB")))
     }
 
     @Test

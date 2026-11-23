@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.multipart.MultipartFile
 import org.springframework.web.util.UriComponentsBuilder
 
 data class SeverityBadge(val severity: String, val text: String)
@@ -79,10 +80,11 @@ class PageController(
         @RequestParam name: String,
         @RequestParam domain: String,
         @RequestParam(defaultValue = "") lockfile: String,
+        @RequestParam(required = false) file: MultipartFile?,
         @RequestParam(defaultValue = "") webhookUrl: String,
         model: Model,
     ): String = try {
-        "redirect:/projects/${projectSetup.create(name, domain, webhookUrl, lockfile)}"
+        "redirect:/projects/${projectSetup.create(name, domain, webhookUrl, dependencyContent(file, lockfile))}"
     } catch (e: SecwatchException) {
         model.addAttribute("error", e.message)
         model.addAttribute("name", name)
@@ -100,8 +102,13 @@ class PageController(
     ): String = renderDetail(id, model, null, null, parseSeverityFilter(severity), normalizeStatusFilter(status))
 
     @PostMapping("/projects/{id}/dependencies")
-    fun reimport(@PathVariable id: Long, @RequestParam(defaultValue = "") lockfile: String, model: Model): String = try {
-        dependencyImporter.import(id, lockfile)
+    fun reimport(
+        @PathVariable id: Long,
+        @RequestParam(defaultValue = "") lockfile: String,
+        @RequestParam(required = false) file: MultipartFile?,
+        model: Model,
+    ): String = try {
+        dependencyImporter.import(id, dependencyContent(file, lockfile))
         "redirect:/projects/$id"
     } catch (e: SecwatchException) {
         renderDetail(id, model, e.message, null, null, ALL)
@@ -168,6 +175,11 @@ class PageController(
         return "project-detail"
     }
 
+    private fun dependencyContent(file: MultipartFile?, pasted: String): String {
+        if (file == null || file.isEmpty) return pasted
+        return String(file.bytes, Charsets.UTF_8).removePrefix(BYTE_ORDER_MARK)
+    }
+
     private fun matchesStatus(findingStatus: String, filter: String) = when (filter) {
         ALL -> true
         OPEN -> findingStatus in OPEN_STATUS_NAMES
@@ -226,6 +238,7 @@ class PageController(
     private companion object {
         const val ALL = "all"
         const val OPEN = "open"
+        const val BYTE_ORDER_MARK = "\uFEFF"
         val OPEN_STATUS_NAMES = FindingStatus.OPEN.map { status -> status.name }.toSet()
     }
 }

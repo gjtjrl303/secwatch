@@ -17,8 +17,10 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.mock.web.MockMultipartFile
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern
@@ -164,6 +166,29 @@ class PageControllerTest : FakeExternalApiIntegrationTest() {
     }
 
     @Test
+    @DisplayName("등록할 때 의존성 목록을 파일로 올릴 수 있다")
+    fun create_with_an_uploaded_file() {
+        val file = MockMultipartFile("file", "package-lock.json", "application/json", lockfile.toByteArray())
+
+        mockMvc.perform(multipart("/projects").file(file).param("name", "juice").param("domain", "juice.example.com"))
+            .andExpect(status().is3xxRedirection)
+
+        assertThat(dependencyRepository.findAll().map { dependency -> dependency.name }).containsExactly("lodash")
+    }
+
+    @Test
+    @DisplayName("등록 화면이 세 가지 형식과 파일 올리기를 안내한다")
+    fun new_form_explains_the_three_formats() {
+        mockMvc.perform(get("/projects/new"))
+            .andExpect(content().string(containsString("package-lock.json")))
+            .andExpect(content().string(containsString("./gradlew dependencies")))
+            .andExpect(content().string(containsString("CycloneDX SBOM")))
+            .andExpect(content().string(containsString("enctype=\"multipart/form-data\"")))
+            .andExpect(content().string(containsString("type=\"file\"")))
+            .andExpect(content().string(containsString("size > 20971520 ? '파일이 너무 큽니다. 20MB 이하의 파일을 올려 주세요.' : ''")))
+    }
+
+    @Test
     @DisplayName("잠금 파일과 웹훅은 비워도 등록할 수 있다")
     fun lockfile_and_webhook_are_optional() {
         submitNewProject(lockfile = "", webhookUrl = "")
@@ -189,7 +214,7 @@ class PageControllerTest : FakeExternalApiIntegrationTest() {
     fun unsupported_lockfile_rolls_back_the_whole_registration() {
         submitNewProject(lockfile = "not json", webhookUrl = webhook)
             .andExpect(status().isOk)
-            .andExpect(content().string(containsString("지원하지 않는 형식입니다. package-lock.json 내용을 붙여넣어 주세요.")))
+            .andExpect(content().string(containsString("지원하지 않는 형식입니다. package-lock.json, Gradle dependencies 출력, CycloneDX SBOM 중 하나를 넣어 주세요.")))
 
         assertThat(count("project")).isEqualTo(0)
         assertThat(count("dependency")).isEqualTo(0)

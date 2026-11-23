@@ -10,10 +10,18 @@ spring:
     open-in-view: false
   flyway:
     enabled: true
+  servlet:
+    multipart:
+      # 화면의 안내 문구(20MB)와 ErrorCode.FILE_TOO_LARGE 문구와 같이 바꾼다.
+      max-file-size: 20MB
+      # 파일 한도와 붙여넣기 한도(max-http-form-post-size)를 합친 것보다 커야 한다.
+      max-request-size: 45MB
 server:
   tomcat:
     # 실제 package-lock.json은 Tomcat 기본 폼 한도(2MB)를 자주 넘는다.
     max-http-form-post-size: 20MB
+    # 한도를 넘는 업로드를 끝까지 읽어야 연결이 끊기지 않고 안내 화면이 나간다. 이보다 큰 요청은 연결을 끊는다.
+    max-swallow-size: 50MB
 secwatch:
   recheck:
     # 매일 재점검 시각(초 분 시 일 월 요일, Asia/Seoul 기준). "-"로 두면 끈다.

@@ -52,7 +52,7 @@ class DependencyControllerTest : FakeExternalApiIntegrationTest() {
     fun blank_content_is_400() {
         import(projectId, "   ")
             .andExpect(status().isBadRequest)
-            .andExpect(jsonPath("$.message").value("의존성 목록을 붙여넣어 주세요."))
+            .andExpect(jsonPath("$.message").value("의존성 목록을 붙여넣거나 파일을 올려 주세요."))
     }
 
     @Test
@@ -60,7 +60,7 @@ class DependencyControllerTest : FakeExternalApiIntegrationTest() {
     fun unsupported_is_400() {
         import(projectId, "not json")
             .andExpect(status().isBadRequest)
-            .andExpect(jsonPath("$.message").value("지원하지 않는 형식입니다. package-lock.json 내용을 붙여넣어 주세요."))
+            .andExpect(jsonPath("$.message").value("지원하지 않는 형식입니다. package-lock.json, Gradle dependencies 출력, CycloneDX SBOM 중 하나를 넣어 주세요."))
     }
 
     @Test
