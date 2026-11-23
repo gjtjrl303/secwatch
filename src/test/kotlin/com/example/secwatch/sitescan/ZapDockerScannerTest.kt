@@ -110,6 +110,18 @@ class ZapDockerScannerTest {
     }
 
     @Test
+    @DisplayName("결과에서는 주소의 호스트만 되돌리고, 경로나 다른 호스트에 든 같은 글자는 그대로 둔다")
+    fun only_the_host_is_restored_in_the_result() {
+        val report = """{"plain":"http://host.docker.internal:3000/host.docker.internal.js","escaped":"http:\/\/host.docker.internal:3000\/x","bare":"http://host.docker.internal","other":"https://host.docker.internal.example.com/"}"""
+
+        val result = scanner("printf '%s' '$report' > \"${'$'}dir/report.json\"; exit 0").scan("http://localhost:3000")
+
+        assertThat(result).isEqualTo(
+            """{"plain":"http://localhost:3000/host.docker.internal.js","escaped":"http:\/\/localhost:3000\/x","bare":"http://localhost","other":"https://host.docker.internal.example.com/"}"""
+        )
+    }
+
+    @Test
     @DisplayName("경고 항목이 있어서 1이나 2로 끝나도 결과를 읽는다")
     fun warning_exit_codes_are_success() {
         assertThat(scanner("$writeReport; exit 2").scan("http://localhost:3000")).contains("localhost")

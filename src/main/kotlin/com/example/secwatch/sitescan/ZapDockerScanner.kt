@@ -33,7 +33,7 @@ class ZapDockerScanner(
             val report = workDir.resolve(REPORT_FILE)
             if (!Files.exists(report)) throw SiteScanFailedException("ZAP이 결과 파일을 만들지 않았습니다.")
             val rawJson = Files.readString(report)
-            return if (localHost == null) rawJson else rawJson.replace(HOST_FROM_CONTAINER, localHost)
+            return if (localHost == null) rawJson else rawJson.replace(CONTAINER_HOST_IN_URL) { match -> match.groupValues[1] + localHost }
         } finally {
             workDir.toFile().deleteRecursively()
         }
@@ -94,5 +94,8 @@ class ZapDockerScanner(
         const val REPORT_FILE = "report.json"
         val LOCAL_HOSTS = listOf("localhost", "127.0.0.1")
         val FINISHED_EXIT_CODES = setOf(0, 1, 2)
+
+        // 주소의 호스트 자리만 고른다. ZAP 결과에는 `://`와 JSON이 빗금을 이스케이프한 `:\/\/`가 섞여 있다.
+        val CONTAINER_HOST_IN_URL = Regex("""(:(?://|\\/\\/))host\.docker\.internal(?=[:/"\\?#]|$)""")
     }
 }
