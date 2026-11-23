@@ -18,6 +18,9 @@ class FindingGroupingTest {
         referenceUrl = "https://osv.dev/vulnerability/x",
         vulnerabilityId = "GHSA-x",
         fixedVersions = emptyList(),
+        typeLabel = "t",
+        typeDescription = "d",
+        fixAdvice = "f",
         status = "NEW",
         statusLabel = "새로 발견",
     )

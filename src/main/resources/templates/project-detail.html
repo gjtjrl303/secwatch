@@ -30,6 +30,16 @@
     </section>
 
     <h2>취약점</h2>
+    <details class="guide">
+        <summary>위험도 기준</summary>
+        <ul>
+            <li><span class="badge sev-critical">치명</span> 인증 없이 원격에서 악용될 수 있는 수준입니다. 가장 먼저 고칩니다.</li>
+            <li><span class="badge sev-high">높음</span> 악용되면 피해가 큽니다. 빠르게 고칩니다.</li>
+            <li><span class="badge sev-moderate">보통</span> 특정 조건에서만 악용됩니다. 다음 정기 업데이트에 고칩니다.</li>
+            <li><span class="badge sev-low">낮음</span> 악용하기 어렵거나 피해가 작습니다. 여유가 있을 때 고칩니다.</li>
+            <li><span class="badge sev-unclassified">미분류</span> 위험도 정보가 없습니다. 원문을 확인합니다.</li>
+        </ul>
+    </details>
     <form method="get" class="filters" th:action="@{/projects/{id}(id=${project.id})}">
         <label>위험도
             <select name="severity" onchange="this.form.submit()">
@@ -57,16 +67,22 @@
             </summary>
             <div class="table-scroll">
                 <table>
-                    <thead><tr><th>위험도</th><th>내용</th><th>고쳐진 버전</th><th>상태</th></tr></thead>
+                    <thead><tr><th>위험도</th><th>내용</th><th>고치는 방법</th><th>상태</th></tr></thead>
                     <tbody>
                     <tr th:each="f : ${g.findings}" th:id="'f' + ${f.id}"
                         th:classappend="${f.status == 'RESOLVED' or f.status == 'NOT_APPLICABLE'} ? 'closed'">
                         <td><span th:class="'badge sev-' + ${#strings.toLowerCase(f.severity)}" th:text="${f.severityLabel}"></span></td>
                         <td class="wrap-anywhere">
-                            <span th:text="${f.summary}"></span><br>
+                            <strong th:text="${f.typeLabel}"></strong><br>
+                            <span th:text="${f.typeDescription}"></span><br>
+                            <span class="muted" th:text="${f.summary}"></span><br>
                             <a th:href="${f.referenceUrl}" rel="noopener noreferrer" target="_blank" th:text="${f.vulnerabilityId}"></a>
                         </td>
-                        <td th:text="${f.fixedVersions.empty} ? '없음' : ${#strings.listJoin(f.fixedVersions, ', ')}"></td>
+                        <td>
+                            <span th:text="${f.fixAdvice}"></span>
+                            <br th:if="${f.fixedVersions.size() > 1}">
+                            <span th:if="${f.fixedVersions.size() > 1}" class="muted" th:text="'고쳐진 버전: ' + ${#strings.listJoin(f.fixedVersions, ', ')}"></span>
+                        </td>
                         <td>
                             <form method="post" th:action="@{/projects/{pid}/findings/{fid}/status(pid=${project.id},fid=${f.id})}">
                                 <input type="hidden" name="filterSeverity" th:value="${filterSeverity}">

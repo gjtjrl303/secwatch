@@ -49,6 +49,7 @@ class PageControllerTest : FakeExternalApiIntegrationTest() {
         status: FindingStatus = FindingStatus.NEW,
         summary: String = "summary of $vulnerabilityId",
         packageName: String = "lodash",
+        rawJson: String = "{}",
     ): Finding {
         val dependency = dependencyRepository.findByProjectId(project.id!!).firstOrNull { saved -> saved.name == packageName }
             ?: dependencyRepository.save(Dependency(project, "npm", packageName, "4.17.20"))
@@ -60,7 +61,7 @@ class PageControllerTest : FakeExternalApiIntegrationTest() {
             severity = severity,
             fixedVersions = "4.17.21",
             referenceUrl = "https://osv.dev/vulnerability/$vulnerabilityId",
-            rawJson = "{}",
+            rawJson = rawJson,
             firstSeenAt = LocalDateTime.now(),
         )
         if (status != FindingStatus.NEW) finding.changeStatus(status)
@@ -247,6 +248,31 @@ class PageControllerTest : FakeExternalApiIntegrationTest() {
             .andReturn().response.contentAsString
 
         assertThat(html.indexOf("GHSA-TOP")).isLessThan(html.indexOf("GHSA-LOW"))
+    }
+
+    @Test
+    @DisplayName("상세 화면의 항목에 한국어 유형 설명과 고치는 방법이 나온다")
+    fun detail_shows_type_description_and_fix_advice() {
+        val project = saveProject()
+        saveFinding(project, "GHSA-DOS", rawJson = """{"database_specific":{"cwe_ids":["CWE-400"]}}""")
+        saveFinding(project, "GHSA-NOTYPE", packageName = "other")
+
+        mockMvc.perform(get("/projects/${project.id}"))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("서비스 멈춤 위험")))
+            .andExpect(content().string(containsString("분류되지 않은 유형")))
+            .andExpect(content().string(containsString("4.17.21 이상으로 올립니다.")))
+            .andExpect(content().string(containsString("summary of GHSA-DOS")))
+            .andExpect(content().string(containsString("https://osv.dev/vulnerability/GHSA-DOS")))
+    }
+
+    @Test
+    @DisplayName("상세 화면에 위험도 기준 설명이 있다")
+    fun detail_shows_severity_guide() {
+        val project = saveProject()
+
+        mockMvc.perform(get("/projects/${project.id}"))
+            .andExpect(content().string(containsString("위험도 기준")))
     }
 
     @Test
