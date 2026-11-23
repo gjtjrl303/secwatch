@@ -10,7 +10,7 @@ import java.util.concurrent.TimeUnit
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 
-/** Docker로 ZAP 기본 점검(둘러보고 응답만 살펴보는 방식)을 실행한다. */
+/** Docker로 ZAP을 띄워 사이트를 둘러보고 응답만 살펴본다. 공격 요청을 보내지 않고 POST 폼도 제출하지 않는다. */
 @Component
 class ZapDockerScanner(
     @Value("\${secwatch.site-scan.docker-command:docker}") private val dockerCommand: String,
@@ -28,7 +28,8 @@ class ZapDockerScanner(
         try {
             // ZAP은 컨테이너 안의 다른 사용자로 돌아서, 결과를 쓸 수 있게 열어 둔다
             Files.setPosixFilePermissions(workDir, PosixFilePermissions.fromString("rwxrwxrwx"))
-            run(command(containerName, workDir, containerUrl), containerName, workDir)
+            Files.writeString(workDir.resolve(PLAN_FILE), plan(containerUrl))
+            run(command(containerName, workDir), containerName, workDir.resolve("zap.log"))
 
             val report = workDir.resolve(REPORT_FILE)
             if (!Files.exists(report)) throw SiteScanFailedException("ZAP이 결과 파일을 만들지 않았습니다.")
@@ -39,16 +40,49 @@ class ZapDockerScanner(
         }
     }
 
-    private fun command(containerName: String, workDir: Path, containerUrl: String) = listOf(
+    /**
+     * ZAP의 기본 점검 스크립트(zap-baseline.py)와 같은 순서와 같은 규칙이지만 두 가지가 다르다.
+     * 스크립트는 페이지의 POST 폼을 제출하고, 시작할 때마다 설치된 규칙 전체를 갱신한다.
+     */
+    private fun plan(containerUrl: String) = """
+        env:
+          contexts:
+          - name: secwatch
+            urls:
+            - '$containerUrl'
+          parameters:
+            failOnError: true
+            progressToStdout: false
+        jobs:
+        - type: passiveScan-config
+          parameters:
+            enableTags: false
+            maxAlertsPerRule: 10
+        - type: spider
+          parameters:
+            url: '$containerUrl'
+            maxDuration: $spiderMinutes
+            postForm: false
+        - type: passiveScan-wait
+          parameters:
+            maxDuration: 0
+        - type: report
+          parameters:
+            template: traditional-json
+            reportDir: /zap/wrk/
+            reportFile: $REPORT_FILE
+    """.trimIndent() + "\n"
+
+    private fun command(containerName: String, workDir: Path) = listOf(
         dockerCommand, "run", "--rm", "--name", containerName,
         "--add-host=$HOST_FROM_CONTAINER:host-gateway",
         "-v", "$workDir:/zap/wrk:rw",
-        zapImage, "zap-baseline.py", "-t", containerUrl, "-J", REPORT_FILE, "-m", spiderMinutes.toString(),
+        zapImage, "zap.sh", "-cmd", "-addoninstall", BETA_PASSIVE_RULES, "-autorun", "/zap/wrk/$PLAN_FILE",
     )
 
-    private fun run(command: List<String>, containerName: String, workDir: Path) {
+    private fun run(command: List<String>, containerName: String, logFile: Path) {
         val process = try {
-            ProcessBuilder(command).redirectErrorStream(true).redirectOutput(workDir.resolve("zap.log").toFile()).start()
+            ProcessBuilder(command).redirectErrorStream(true).redirectOutput(logFile.toFile()).start()
         } catch (e: IOException) {
             throw SiteScanFailedException("Docker를 실행하지 못했습니다.", e)
         }
@@ -69,16 +103,13 @@ class ZapDockerScanner(
             throw SiteScanFailedException("점검이 중단됐습니다.")
         }
         if (!finished) throw SiteScanFailedException("점검이 제한 시간 안에 끝나지 않았습니다.")
-        // ZAP 기본 점검은 경고나 실패 항목이 있으면 1이나 2로 끝난다. 그 밖의 값은 점검 자체가 안 된 것이다.
-        if (process.exitValue() !in FINISHED_EXIT_CODES) {
-            throw SiteScanFailedException("ZAP 실행에 실패했습니다(종료 코드 ${process.exitValue()}).")
-        }
+        if (process.exitValue() != 0) throw SiteScanFailedException("ZAP 실행에 실패했습니다(종료 코드 ${process.exitValue()}).")
     }
 
     private fun removeContainer(containerName: String) {
         try {
             ProcessBuilder(dockerCommand, "rm", "-f", containerName).redirectErrorStream(true)
-                .redirectOutput(ProcessBuilder.Redirect.DISCARD).start().waitFor(10, TimeUnit.SECONDS)
+                .redirectOutput(ProcessBuilder.Redirect.DISCARD).start().waitFor(CLEANUP_SECONDS, TimeUnit.SECONDS)
         } catch (e: IOException) {
             // 컨테이너는 --rm으로 띄워서 끝나면 스스로 지워진다
         } catch (e: InterruptedException) {
@@ -91,9 +122,13 @@ class ZapDockerScanner(
 
     private companion object {
         const val HOST_FROM_CONTAINER = "host.docker.internal"
+        const val PLAN_FILE = "plan.yaml"
         const val REPORT_FILE = "report.json"
+        const val CLEANUP_SECONDS = 10L
+
+        // 기본 점검 스크립트가 함께 쓰는 규칙 묶음이다. 빼면 연습용 사이트에서 10종이던 항목이 3종으로 준다.
+        const val BETA_PASSIVE_RULES = "pscanrulesBeta"
         val LOCAL_HOSTS = listOf("localhost", "127.0.0.1")
-        val FINISHED_EXIT_CODES = setOf(0, 1, 2)
 
         // 주소의 호스트 자리만 고른다. ZAP 결과에는 `://`와 JSON이 빗금을 이스케이프한 `:\/\/`가 섞여 있다.
         val CONTAINER_HOST_IN_URL = Regex("""(:(?://|\\/\\/))host\.docker\.internal(?=[:/"\\?#]|$)""")
