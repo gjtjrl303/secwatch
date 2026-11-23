@@ -98,6 +98,20 @@ class DependencyControllerTest : FakeExternalApiIntegrationTest() {
     }
 
     @Test
+    @DisplayName("Gradle dependencies 출력을 등록하면 Maven 에코시스템으로 의존성을 저장한다")
+    fun gradle_output_import_stores_maven_rows() {
+        val output = "runtimeClasspath - Runtime classpath of source set 'main'.\n+--- org.yaml:snakeyaml:1.33\n\\--- x:y:9.9 FAILED\n"
+
+        import(projectId, output)
+            .andExpect(status().isAccepted)
+            .andExpect(jsonPath("$.data.parsed").value(1))
+            .andExpect(jsonPath("$.data.skipped").value(1))
+        val stored = jdbcTemplate.queryForList("select ecosystem, name, version from dependency where project_id = ?", projectId)
+        assertThat(stored.map { row -> listOf(row["ecosystem"], row["name"], row["version"]) })
+            .containsExactly(listOf("Maven", "org.yaml:snakeyaml", "1.33"))
+    }
+
+    @Test
     @DisplayName("읽지 못해 건너뛴 항목 수를 알려준다")
     fun skipped_reported() {
         val withLink = lock("a" to "1.0.0", extra = ""","node_modules/l":{"link":true}""")

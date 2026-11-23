@@ -12,7 +12,7 @@ import org.junit.jupiter.api.assertThrows
 @DisplayName("붙여넣은 내용의 형식 자동 선택")
 class DependencyFormatSelectorTest {
     private val objectMapper = ObjectMapper()
-    private val selector = DependencyFormatSelector(objectMapper, NpmLockParser(objectMapper), CycloneDxParser(objectMapper))
+    private val selector = DependencyFormatSelector(objectMapper, NpmLockParser(objectMapper), CycloneDxParser(objectMapper), GradleDependenciesParser())
 
     private fun fixture(name: String) = javaClass.getResource("/fixtures/$name")!!.readText()
 
@@ -30,6 +30,14 @@ class DependencyFormatSelectorTest {
         val content = fixture("package-lock-v3-small.json")
 
         assertThat(selector.parse(content)).isEqualTo(NpmLockParser(objectMapper).parse(content))
+    }
+
+    @Test
+    @DisplayName("JSON이 아니고 Gradle 트리 줄이 있으면 Gradle dependencies 출력으로 읽는다")
+    fun gradle_output_is_read() {
+        val result = selector.parse(fixture("gradle-dependencies-small.txt"))
+
+        assertThat(result.packages).contains(PackageReference("Maven", "org.jsoup:jsoup", "1.15.3"))
     }
 
     @Test
