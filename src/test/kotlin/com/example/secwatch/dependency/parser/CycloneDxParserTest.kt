@@ -47,6 +47,24 @@ class CycloneDxParserTest {
     }
 
     @Test
+    @DisplayName("프로젝트 자신(metadata.component) 안에 든 구성 요소는 읽고, 읽지 못한 것은 개수에 센다")
+    fun components_inside_root_component_are_read() {
+        val json = """{"bomFormat":"CycloneDX","specVersion":"1.5",
+            "metadata":{"component":{"type":"application","purl":"pkg:maven/com.example/demo@0.0.1","components":[
+                {"type":"library","purl":"pkg:maven/org.yaml/snakeyaml@1.33"},
+                {"type":"library","name":"no-purl"}]}},
+            "components":[{"type":"library","purl":"pkg:maven/c/d@1.0"}]}"""
+
+        val result = cycloneDxParser.parse(json)
+
+        assertThat(result.packages).containsExactlyInAnyOrder(
+            PackageReference("Maven", "c:d", "1.0"),
+            PackageReference("Maven", "org.yaml:snakeyaml", "1.33"),
+        )
+        assertThat(result.skipped).isEqualTo(1)
+    }
+
+    @Test
     @DisplayName("purl이 없거나 지원하지 않는 종류인 항목은 건너뛰고 개수를 센다")
     fun skips_missing_purl_and_unknown_type() {
         val result = cycloneDxParser.parse(fixture())

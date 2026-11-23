@@ -25,7 +25,9 @@ class CycloneDxParser(private val objectMapper: ObjectMapper) : DependencyParser
 
         val packageReferences = LinkedHashSet<PackageReference>()
         var skipped = 0
-        for (component in allComponents(root?.get(COMPONENTS))) {
+        // 프로젝트 자신(metadata.component)은 라이브러리가 아니라서 빼고, 그 안에 든 구성 요소만 읽는다
+        val insideProject = root?.get("metadata")?.get("component")?.get(COMPONENTS)
+        for (component in allComponents(root?.get(COMPONENTS)) + allComponents(insideProject)) {
             val reference = component.get("purl")?.takeIf { node -> node.isTextual }?.let { node -> toPackageReference(node.asText()) }
             if (reference == null) skipped++ else packageReferences.add(reference)
         }
