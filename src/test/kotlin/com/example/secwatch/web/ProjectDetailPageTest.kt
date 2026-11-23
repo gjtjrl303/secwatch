@@ -343,6 +343,7 @@ class ProjectDetailPageTest : FakeExternalApiIntegrationTest() {
             .andExpect(content().string(containsString("CycloneDX SBOM")))
             .andExpect(content().string(containsString("enctype=\"multipart/form-data\"")))
             .andExpect(content().string(containsString("type=\"file\"")))
+            .andExpect(content().string(containsString("size > 20971520 ? '파일이 너무 큽니다. 20MB 이하의 파일을 올려 주세요.' : ''")))
             .andExpect(content().string(containsString("20MB")))
     }
 

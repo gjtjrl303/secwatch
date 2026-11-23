@@ -111,7 +111,8 @@
             <li>그 외: CycloneDX SBOM(JSON) 파일</li>
         </ul>
         <label for="file">파일 올리기 (20MB 이하)</label>
-        <input type="file" id="file" name="file">
+        <input type="file" id="file" name="file"
+               onchange="this.setCustomValidity((this.files[0] || {size: 0}).size > 20971520 ? '파일이 너무 큽니다. 20MB 이하의 파일을 올려 주세요.' : '')">
         <label for="lockfile">또는 내용 붙여넣기</label>
         <textarea id="lockfile" name="lockfile"></textarea>
         <p class="muted">파일과 붙여넣은 내용이 둘 다 있으면 파일을 씁니다.</p>
