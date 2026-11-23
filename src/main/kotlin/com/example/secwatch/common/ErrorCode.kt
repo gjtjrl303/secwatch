@@ -14,8 +14,12 @@ enum class ErrorCode(val status: HttpStatus, val code: Int, val message: String)
 
     NOT_FOUND_PROJECT(HttpStatus.NOT_FOUND, 40401, "프로젝트를 찾을 수 없습니다."),
     NOT_FOUND_FINDING(HttpStatus.NOT_FOUND, 40402, "발견 항목을 찾을 수 없습니다."),
+    NOT_FOUND_SITE_FINDING(HttpStatus.NOT_FOUND, 40403, "사이트 발견 항목을 찾을 수 없습니다."),
 
     DUPLICATE_DOMAIN(HttpStatus.CONFLICT, 40901, "이미 등록된 도메인입니다."),
+    SCAN_IN_PROGRESS(HttpStatus.CONFLICT, 40902, "다른 사이트 점검이 진행 중입니다. 끝난 뒤에 다시 시도해 주세요."),
+
+    SCAN_TOO_SOON(HttpStatus.TOO_MANY_REQUESTS, 42901, "방금 점검한 프로젝트입니다. 잠시 뒤에 다시 시도해 주세요."),
 
     FILE_TOO_LARGE(HttpStatus.PAYLOAD_TOO_LARGE, 41301, "파일이 너무 큽니다. 20MB 이하의 파일을 올려 주세요."),
 }

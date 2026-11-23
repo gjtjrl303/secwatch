@@ -73,6 +73,7 @@ class ArchitectureTest {
             "finding" to listOf("common", "project", "dependency", "osv"),
             // 알림 문구가 항목에 딸린 의존성의 이름과 버전을 쓴다(finding.dependency)
             "notify" to listOf("common", "project", "dependency", "finding"),
+            "sitescan" to listOf("common", "project", "finding"),
             "application" to listOf("common", "project", "dependency", "finding", "notify"),
             "web" to listOf("common", "project", "dependency", "finding", "application"),
         )
