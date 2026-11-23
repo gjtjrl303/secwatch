@@ -103,9 +103,18 @@
 
     <h2>의존성 다시 가져오기</h2>
     <p th:if="${importError}" class="error" th:text="${importError}"></p>
-    <form method="post" th:action="@{/projects/{id}/dependencies(id=${project.id})}">
-        <label for="lockfile">package-lock.json 내용</label>
-        <textarea id="lockfile" name="lockfile" required></textarea>
+    <form method="post" enctype="multipart/form-data" th:action="@{/projects/{id}/dependencies(id=${project.id})}">
+        <p>아래 중 하나를 파일로 올리거나 내용을 붙여넣습니다. 형식은 자동으로 알아냅니다.</p>
+        <ul class="muted">
+            <li>Node: <code>package-lock.json</code> 파일</li>
+            <li>Gradle: <code>./gradlew dependencies</code> 출력</li>
+            <li>그 외: CycloneDX SBOM(JSON) 파일</li>
+        </ul>
+        <label for="file">파일 올리기 (20MB 이하)</label>
+        <input type="file" id="file" name="file">
+        <label for="lockfile">또는 내용 붙여넣기</label>
+        <textarea id="lockfile" name="lockfile"></textarea>
+        <p class="muted">파일과 붙여넣은 내용이 둘 다 있으면 파일을 씁니다.</p>
         <p class="muted">버전이 바뀌거나 빠진 라이브러리의 이전 항목과 상태 이력은 함께 지워집니다.</p>
         <button type="submit">다시 가져오기</button>
     </form>
