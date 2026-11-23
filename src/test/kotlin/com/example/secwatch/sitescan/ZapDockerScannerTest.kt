@@ -5,6 +5,7 @@ import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 import java.time.Duration
 import org.assertj.core.api.Assertions.assertThat
+import org.awaitility.Awaitility
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -62,6 +63,32 @@ class ZapDockerScannerTest {
 
         assertThat(Files.readString(calls)).contains("-t https://dev.example.com")
         assertThat(result).isEqualTo("""{"target":"https://dev.example.com"}""")
+    }
+
+    @Test
+    @DisplayName("점검 도중 스레드가 중단돼도 컨테이너를 지우고 점검 실패로 끝내며 중단 표시를 남긴다")
+    fun interrupted_scan_removes_the_container() {
+        val scanner = scanner("sleep 30", Duration.ofSeconds(60))
+        var failure: Throwable? = null
+        var stillInterrupted = false
+        val thread = Thread {
+            try {
+                scanner.scan("http://localhost:3000")
+            } catch (e: Throwable) {
+                failure = e
+            }
+            stillInterrupted = Thread.currentThread().isInterrupted
+        }
+        thread.start()
+        Awaitility.await().atMost(Duration.ofSeconds(10)).until { Files.exists(calls) && Files.readString(calls).contains("run ") }
+
+        thread.interrupt()
+        thread.join(10_000)
+
+        assertThat(thread.isAlive).isFalse()
+        assertThat(failure).isInstanceOf(SiteScanFailedException::class.java).hasMessage("점검이 중단됐습니다.")
+        assertThat(stillInterrupted).isTrue()
+        Awaitility.await().atMost(Duration.ofSeconds(5)).until { Files.readAllLines(calls).last().startsWith("rm -f secwatch-zap-") }
     }
 
     @Test

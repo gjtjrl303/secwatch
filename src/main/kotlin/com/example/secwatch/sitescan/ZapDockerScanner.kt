@@ -50,11 +50,23 @@ class ZapDockerScanner(
         } catch (e: IOException) {
             throw SiteScanFailedException("Docker를 실행하지 못했습니다.", e)
         }
-        if (!process.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS)) {
+        var interrupted = false
+        val finished = try {
+            process.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS)
+        } catch (e: InterruptedException) {
+            interrupted = true
+            false
+        }
+        if (!finished) {
             process.destroyForcibly()
             removeContainer(containerName)
-            throw SiteScanFailedException("점검이 제한 시간 안에 끝나지 않았습니다.")
         }
+        if (interrupted) {
+            // 컨테이너를 지운 뒤에 중단 표시를 되돌린다. 먼저 되돌리면 지우는 명령을 기다리지 못한다.
+            Thread.currentThread().interrupt()
+            throw SiteScanFailedException("점검이 중단됐습니다.")
+        }
+        if (!finished) throw SiteScanFailedException("점검이 제한 시간 안에 끝나지 않았습니다.")
         // ZAP 기본 점검은 경고나 실패 항목이 있으면 1이나 2로 끝난다. 그 밖의 값은 점검 자체가 안 된 것이다.
         if (process.exitValue() !in FINISHED_EXIT_CODES) {
             throw SiteScanFailedException("ZAP 실행에 실패했습니다(종료 코드 ${process.exitValue()}).")
@@ -67,6 +79,8 @@ class ZapDockerScanner(
                 .redirectOutput(ProcessBuilder.Redirect.DISCARD).start().waitFor(10, TimeUnit.SECONDS)
         } catch (e: IOException) {
             // 컨테이너는 --rm으로 띄워서 끝나면 스스로 지워진다
+        } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt()
         }
     }
 
