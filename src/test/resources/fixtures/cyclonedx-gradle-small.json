@@ -1,0 +1,50 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "version": 1,
+  "metadata": {
+    "component": {
+      "type": "application",
+      "group": "com.example",
+      "name": "demo",
+      "version": "0.0.1",
+      "purl": "pkg:maven/com.example/demo@0.0.1?type=jar"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "group": "org.springframework",
+      "name": "spring-core",
+      "version": "6.1.5",
+      "purl": "pkg:maven/org.springframework/spring-core@6.1.5?type=jar"
+    },
+    {
+      "type": "library",
+      "group": "com.fasterxml.jackson.core",
+      "name": "jackson-databind",
+      "version": "2.15.0",
+      "purl": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.15.0?type=jar",
+      "components": [
+        {
+          "type": "library",
+          "group": "org.yaml",
+          "name": "snakeyaml",
+          "version": "1.33",
+          "purl": "pkg:maven/org.yaml/snakeyaml@1.33?type=jar"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "no-purl",
+      "version": "1.0.0"
+    },
+    {
+      "type": "library",
+      "name": "some-gem",
+      "version": "1.0.0",
+      "purl": "pkg:gem/some-gem@1.0.0"
+    }
+  ]
+}
