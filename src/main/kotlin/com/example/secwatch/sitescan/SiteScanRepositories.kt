@@ -1,5 +1,6 @@
 package com.example.secwatch.sitescan
 
+import com.example.secwatch.project.Project
 import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Lock
@@ -7,6 +8,13 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 
 interface SiteScanRepository : JpaRepository<SiteScan, Long> {
+    @Query(value = "select id from site_scan_lock where id = 1 for update", nativeQuery = true)
+    fun lockAllStarts(): Int
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Project p where p.id = (select s.project.id from SiteScan s where s.id = :scanId)")
+    fun lockProjectOf(@Param("scanId") scanId: Long): Project?
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from SiteScan s where s.status = :status")
     fun findByStatusForUpdate(@Param("status") status: SiteScanStatus): List<SiteScan>

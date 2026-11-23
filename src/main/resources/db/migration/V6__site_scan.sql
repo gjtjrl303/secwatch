@@ -10,6 +10,13 @@ CREATE TABLE site_scan (
     CONSTRAINT fk_site_scan_project FOREIGN KEY (project_id) REFERENCES project (id) ON DELETE CASCADE
 );
 
+-- 점검 시작을 한 줄로 세우는 잠금용 행이다.
+CREATE TABLE site_scan_lock (
+    id TINYINT PRIMARY KEY
+);
+
+INSERT INTO site_scan_lock (id) VALUES (1);
+
 CREATE TABLE site_finding (
     id             BIGINT AUTO_INCREMENT PRIMARY KEY,
     project_id     BIGINT       NOT NULL,

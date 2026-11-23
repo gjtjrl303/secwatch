@@ -21,6 +21,8 @@ class SiteScanRecorder(
 ) {
     @Transactional
     fun start(projectId: Long, scanType: SiteScanType = SiteScanType.BASELINE): SiteScan {
+        // 잠그는 순서는 항상 전체 시작 잠금, 프로젝트, 점검 기록이다. 순서가 엇갈리면 교착이 난다.
+        siteScanRepository.lockAllStarts()
         val project = projectRepository.findForUpdate(projectId) ?: throw SecwatchException(ErrorCode.NOT_FOUND_PROJECT)
         val now = LocalDateTime.now()
 
@@ -38,6 +40,7 @@ class SiteScanRecorder(
 
     @Transactional
     fun succeed(scanId: Long, rawJson: String, alerts: List<SiteAlert>) {
+        siteScanRepository.lockProjectOf(scanId) ?: return
         // 이미 끝난 점검(오래돼서 실패로 정리된 것 포함)의 결과가 뒤늦게 오면 받지 않는다
         val scan = siteScanRepository.findForUpdate(scanId, SiteScanStatus.RUNNING) ?: return
         val now = LocalDateTime.now()
