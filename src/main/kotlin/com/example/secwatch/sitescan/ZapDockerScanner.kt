@@ -1,8 +1,11 @@
 package com.example.secwatch.sitescan
 
 import java.io.IOException
+import java.nio.file.FileVisitResult
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.SimpleFileVisitor
+import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.attribute.PosixFilePermissions
 import java.time.Duration
 import java.util.UUID
@@ -24,19 +27,20 @@ class ZapDockerScanner(
         // 컨테이너 안에서 localhost는 컨테이너 자신이라서, 이 컴퓨터를 가리키는 이름으로 바꿔 넘긴다
         val containerUrl = if (localHost == null) targetUrl else targetUrl.replaceFirst("://$localHost", "://$HOST_FROM_CONTAINER")
         val containerName = "secwatch-zap-" + UUID.randomUUID().toString().take(8)
-        val workDir = Files.createTempDirectory("secwatch-zap")
+        // 바깥 폴더는 이 계정만 들어올 수 있다. 그 안의 폴더만 컨테이너의 다른 사용자가 쓸 수 있게 연다.
+        val privateDir = Files.createTempDirectory("secwatch-zap")
         try {
-            // ZAP은 컨테이너 안의 다른 사용자로 돌아서, 결과를 쓸 수 있게 열어 둔다
+            val workDir = Files.createDirectory(privateDir.resolve("wrk"))
             Files.setPosixFilePermissions(workDir, PosixFilePermissions.fromString("rwxrwxrwx"))
             Files.writeString(workDir.resolve(PLAN_FILE), plan(containerUrl))
-            run(command(containerName, workDir), containerName, workDir.resolve("zap.log"))
+            run(command(containerName, workDir), containerName, privateDir.resolve("zap.log"))
 
             val report = workDir.resolve(REPORT_FILE)
-            if (!Files.exists(report)) throw SiteScanFailedException("ZAP이 결과 파일을 만들지 않았습니다.")
+            if (!Files.isRegularFile(report)) throw SiteScanFailedException("ZAP이 결과 파일을 만들지 않았습니다.")
             val rawJson = Files.readString(report)
             return if (localHost == null) rawJson else rawJson.replace(CONTAINER_HOST_IN_URL) { match -> match.groupValues[1] + localHost }
         } finally {
-            workDir.toFile().deleteRecursively()
+            deleteWithoutFollowingLinks(privateDir)
         }
     }
 
@@ -120,6 +124,25 @@ class ZapDockerScanner(
             Thread.currentThread().interrupt()
         } finally {
             if (removal.isAlive) removal.destroyForcibly()
+        }
+    }
+
+    /** 컨테이너가 폴더 안에 링크를 만들 수 있어서, 링크를 따라가지 않고 링크 자체만 지운다. */
+    private fun deleteWithoutFollowingLinks(directory: Path) {
+        try {
+            Files.walkFileTree(directory, object : SimpleFileVisitor<Path>() {
+                override fun visitFile(file: Path, attributes: BasicFileAttributes): FileVisitResult {
+                    Files.deleteIfExists(file)
+                    return FileVisitResult.CONTINUE
+                }
+
+                override fun postVisitDirectory(visited: Path, exception: IOException?): FileVisitResult {
+                    Files.deleteIfExists(visited)
+                    return FileVisitResult.CONTINUE
+                }
+            })
+        } catch (e: IOException) {
+            // 지우지 못한 임시 파일은 운영체제가 정리한다. 점검 결과에는 영향이 없다.
         }
     }
 

@@ -33,6 +33,7 @@ class ZapDockerScannerTest {
                 "dir=\"\"",
                 "while [ \$# -gt 0 ]; do if [ \"\$1\" = \"-v\" ]; then dir=\"\${2%%:*}\"; fi; shift; done",
                 "echo \"\$dir\" > \"${tempDir.resolve("workdir.txt")}\"",
+                "ls -ld \"\$(dirname \"\$dir\")\" | cut -c1-10 > \"${tempDir.resolve("parent-mode.txt")}\"",
                 "cp \"\$dir/plan.yaml\" \"$planCopy\"",
                 "url=\$(grep -m1 'url:' \"\$dir/plan.yaml\" | sed \"s/.*url: *//; s/'//g\")",
                 body,
@@ -191,5 +192,25 @@ class ZapDockerScannerTest {
 
         val workDir = Path.of(Files.readString(tempDir.resolve("workdir.txt")).trim())
         assertThat(Files.exists(workDir)).isFalse()
+        assertThat(Files.exists(workDir.parent)).isFalse()
+    }
+
+    @Test
+    @DisplayName("결과를 쓰는 폴더는 다른 계정이 들어올 수 없는 폴더 안에 둔다")
+    fun work_directory_sits_inside_a_private_directory() {
+        scanner("$writeReport; exit 0").scan("http://localhost:3000")
+
+        assertThat(Files.readString(tempDir.resolve("parent-mode.txt")).trim()).isEqualTo("drwx------")
+    }
+
+    @Test
+    @DisplayName("임시 폴더를 지울 때 그 안의 링크가 가리키는 바깥 파일은 지우지 않는다")
+    fun cleanup_does_not_follow_symbolic_links() {
+        val outside = Files.createDirectory(tempDir.resolve("outside"))
+        val keep = Files.writeString(outside.resolve("keep.txt"), "keep")
+
+        scanner("$writeReport; ln -s \"$outside\" \"\$dir/link\"; exit 0").scan("http://localhost:3000")
+
+        assertThat(Files.exists(keep)).isTrue()
     }
 }
