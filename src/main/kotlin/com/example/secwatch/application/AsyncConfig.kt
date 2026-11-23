@@ -17,6 +17,15 @@ class AsyncConfig {
         setThreadNamePrefix("check-")
     }
 
+    /** ZAP이 메모리를 1GB 가까이 써서 한 번에 하나만 돌린다. 기다리는 요청은 받지 않는다. */
+    @Bean("siteScanExecutor")
+    fun siteScanExecutor(): ThreadPoolTaskExecutor = ThreadPoolTaskExecutor().apply {
+        corePoolSize = 1
+        maxPoolSize = 1
+        queueCapacity = 0
+        setThreadNamePrefix("site-scan-")
+    }
+
     private companion object {
         const val CHECK_THREADS = 2
         const val CHECK_QUEUE_CAPACITY = 20

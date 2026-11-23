@@ -1,0 +1,173 @@
+{
+ "@programName": "ZAP",
+ "@version": "2.17.0",
+ "@generated": "Mon, 23 Nov 2026 10:22:01",
+ "created": "2026-11-23T10:22:01.143373340Z",
+ "site": [
+  {
+   "@name": "https://host.docker.internal:3000",
+   "@host": "host.docker.internal",
+   "@port": "3000",
+   "@ssl": "true",
+   "alerts": []
+  },
+  {
+   "@name": "http://host.docker.internal:3000",
+   "@host": "host.docker.internal",
+   "@port": "3000",
+   "@ssl": "false",
+   "alerts": [
+    {
+     "pluginid": "10095",
+     "alertRef": "10095",
+     "alert": "Backup File Disclosure",
+     "name": "Backup File Disclosure",
+     "riskcode": "2",
+     "confidence": "2",
+     "riskdesc": "Medium (Medium)",
+     "desc": "<p>A backup of the file was disclosed by the web server.</p>",
+     "instances": [
+      {
+       "id": "112",
+       "uri": "http://host.docker.internal:3000/ftp/quarantine%20-%20Copy",
+       "nodeName": "http://host.docker.internal:3000/ftp/quarantine - Copy",
+       "method": "GET",
+       "param": "",
+       "attack": "http://host.docker.internal:3000/ftp/quarantine%20-%20Copy",
+       "evidence": "",
+       "otherinfo": ""
+      },
+      {
+       "id": "113",
+       "uri": "http://host.docker.internal:3000/ftp/quarantine%20-%20Copy%20(2)",
+       "nodeName": "http://host.docker.internal:3000/ftp/quarantine - Copy (2)",
+       "method": "GET",
+       "param": "",
+       "attack": "http://host.docker.internal:3000/ftp/quarantine%20-%20Copy%20(2)",
+       "evidence": "",
+       "otherinfo": ""
+      }
+     ],
+     "count": "31",
+     "systemic": false,
+     "solution": "<p>Do not edit files in-situ on the web server, and ensure that un-necessary files (including hidden files) are removed from the web server.</p>",
+     "otherinfo": "<p>A backup of [http://host.docker.internal:3000/ftp/quarantine] is available at",
+     "reference": "<p>https://cwe.mitre.org/data/definitions/530.html</p><p>https://owasp.org/www-project-web-security-testing-guide/v41/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management_Testing/04-Review_Old_Backup_and_Unreferenced_Files_for_Sensitive_Information.html</p>",
+     "cweid": "530",
+     "wascid": "34",
+     "sourceid": "5882"
+    },
+    {
+     "pluginid": "10038",
+     "alertRef": "10038-1",
+     "alert": "Content Security Policy (CSP) Header Not Set",
+     "name": "Content Security Policy (CSP) Header Not Set",
+     "riskcode": "2",
+     "confidence": "3",
+     "riskdesc": "Medium (High)",
+     "desc": "<p>Content Security Policy (CSP) is an added layer of security that helps to detect and mitigate certain types of attacks, including Cross Site Scripting (XSS) and data injection attacks. These attacks are used for everything from data theft to site defacement or distribution of malware. CSP provides a set of standard HTTP headers that allow website owners to declare approved sources of content that browsers should be allowed to load on that page — covered types are JavaScript, CSS, HTML frames, fonts, images and embeddable objects such as Java applets, ActiveX, audio and video files.</p>",
+     "instances": [
+      {
+       "id": "20",
+       "uri": "http://host.docker.internal:3000",
+       "nodeName": "http://host.docker.internal:3000",
+       "method": "GET",
+       "param": "",
+       "attack": "",
+       "evidence": "",
+       "otherinfo": ""
+      },
+      {
+       "id": "0",
+       "uri": "http://host.docker.internal:3000/",
+       "nodeName": "http://host.docker.internal:3000/",
+       "method": "GET",
+       "param": "",
+       "attack": "",
+       "evidence": "",
+       "otherinfo": ""
+      }
+     ],
+     "count": "5",
+     "systemic": true,
+     "solution": "<p>Ensure that your web server, application server, load balancer, etc. is configured to set the Content-Security-Policy header.</p>",
+     "otherinfo": "",
+     "reference": "<p>https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP</p><p>https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html</p><p>https://www.w3.org/TR/CSP/</p><p>https://w3c.github.io/webappsec-csp/</p><p>https://web.dev/articles/csp</p><p>https://caniuse.com/#feat=contentsecuritypolicy</p><p>https://content-security-policy.com/</p>",
+     "cweid": "693",
+     "wascid": "15",
+     "sourceid": "9"
+    },
+    {
+     "pluginid": "10110",
+     "alertRef": "10110",
+     "alert": "Dangerous JS Functions",
+     "name": "Dangerous JS Functions",
+     "riskcode": "1",
+     "confidence": "1",
+     "riskdesc": "Low (Low)",
+     "desc": "<p>A dangerous JS function seems to be in use that would leave the site vulnerable.</p>",
+     "instances": [
+      {
+       "id": "75",
+       "uri": "http://host.docker.internal:3000/main.js",
+       "nodeName": "http://host.docker.internal:3000/main.js",
+       "method": "GET",
+       "param": "",
+       "attack": "",
+       "evidence": "bypassSecurityTrustHtml(",
+       "otherinfo": ""
+      }
+     ],
+     "count": "1",
+     "systemic": false,
+     "solution": "<p>See the references for security advice on the use of these functions.</p>",
+     "otherinfo": "",
+     "reference": "<p>https://v17.angular.io/guide/security</p>",
+     "cweid": "749",
+     "wascid": "-1",
+     "sourceid": "25"
+    },
+    {
+     "pluginid": "10109",
+     "alertRef": "10109",
+     "alert": "Modern Web Application",
+     "name": "Modern Web Application",
+     "riskcode": "0",
+     "confidence": "2",
+     "riskdesc": "Informational (Medium)",
+     "desc": "<p>The application appears to be a modern web application. If you need to explore it automatically then the Client Spider may well be more effective than the standard one.</p>",
+     "instances": [
+      {
+       "id": "36",
+       "uri": "http://host.docker.internal:3000",
+       "nodeName": "http://host.docker.internal:3000",
+       "method": "GET",
+       "param": "",
+       "attack": "",
+       "evidence": "<script>\n    window.addEventListener(\"load\", function(){\n   ",
+       "otherinfo": ""
+      },
+      {
+       "id": "2",
+       "uri": "http://host.docker.internal:3000/",
+       "nodeName": "http://host.docker.internal:3000/",
+       "method": "GET",
+       "param": "",
+       "attack": "",
+       "evidence": "<script>\n    window.addEventListener(\"load\", function(){\n   ",
+       "otherinfo": ""
+      }
+     ],
+     "count": "5",
+     "systemic": true,
+     "solution": "<p>This is an informational alert and so no changes are required.</p>",
+     "otherinfo": "<p>No links have been found while there are scripts, which is an indication that",
+     "reference": "",
+     "cweid": "-1",
+     "wascid": "-1",
+     "sourceid": "9"
+    }
+   ]
+  }
+ ]
+}
