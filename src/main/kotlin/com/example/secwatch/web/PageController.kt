@@ -8,6 +8,8 @@ import com.example.secwatch.dependency.DependencyImporter
 import com.example.secwatch.finding.Finding
 import com.example.secwatch.finding.FindingService
 import com.example.secwatch.finding.FindingStatus
+import com.example.secwatch.finding.FixAdvice
+import com.example.secwatch.finding.VulnerabilityTypeReader
 import com.example.secwatch.project.Project
 import com.example.secwatch.project.ProjectManagement
 import java.time.LocalDateTime
@@ -46,6 +48,9 @@ data class FindingRow(
     val referenceUrl: String,
     val vulnerabilityId: String,
     val fixedVersions: List<String>,
+    val typeLabel: String,
+    val typeDescription: String,
+    val fixAdvice: String,
     val status: String,
     val statusLabel: String,
 )
@@ -56,6 +61,7 @@ class PageController(
     private val findingService: FindingService,
     private val projectSetup: ProjectSetup,
     private val dependencyImporter: DependencyImporter,
+    private val vulnerabilityTypeReader: VulnerabilityTypeReader,
 ) {
     @GetMapping("/")
     fun dashboard(model: Model): String {
@@ -196,19 +202,26 @@ class PageController(
         lastNotifyError = lastNotifyError,
     )
 
-    private fun Finding.toRow() = FindingRow(
-        id = id!!,
-        severity = severity.name,
-        severityLabel = severity.label,
-        packageName = dependency.name,
-        version = dependency.version,
-        summary = summary,
-        referenceUrl = referenceUrl,
-        vulnerabilityId = primaryVulnerabilityId,
-        fixedVersions = fixedVersions.split(",").filter { version -> version.isNotBlank() },
-        status = status.name,
-        statusLabel = status.label,
-    )
+    private fun Finding.toRow(): FindingRow {
+        val fixed = fixedVersions.split(",").filter { version -> version.isNotBlank() }
+        val type = vulnerabilityTypeReader.read(rawJson)
+        return FindingRow(
+            id = id!!,
+            severity = severity.name,
+            severityLabel = severity.label,
+            packageName = dependency.name,
+            version = dependency.version,
+            summary = summary,
+            referenceUrl = referenceUrl,
+            vulnerabilityId = primaryVulnerabilityId,
+            fixedVersions = fixed,
+            typeLabel = type.label,
+            typeDescription = type.description,
+            fixAdvice = FixAdvice.text(dependency.version, fixed),
+            status = status.name,
+            statusLabel = status.label,
+        )
+    }
 
     private companion object {
         const val ALL = "all"
