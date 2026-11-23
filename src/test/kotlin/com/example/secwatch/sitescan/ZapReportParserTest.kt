@@ -90,6 +90,20 @@ class ZapReportParserTest {
     }
 
     @Test
+    @DisplayName("같은 항목이 여러 사이트에 있으면 하나로 합치고 걸린 주소를 모은다")
+    fun same_alert_across_sites_is_merged() {
+        val http = alert("1-1").replace("http://a.example.com/", "http://a.example.com/a")
+        val https = alert("1-1").replace("http://a.example.com/", "https://a.example.com/b").replace("\"name\":\"n\"", "\"name\":\"other\"")
+        val json = """{"site":[{"@name":"http://a.example.com","alerts":[$http,${alert("2-1")}]},{"@name":"https://a.example.com","alerts":[$https]}]}"""
+
+        val alerts = parser.parse(json)
+
+        assertThat(alerts.map { it.alertRef }).containsExactly("1-1", "2-1")
+        assertThat(alerts.first().urls).containsExactly("http://a.example.com/a", "https://a.example.com/b")
+        assertThat(alerts.first().name).isEqualTo("n")
+    }
+
+    @Test
     @DisplayName("항목이 하나도 없는 결과는 빈 목록이다")
     fun no_alerts_is_empty() {
         assertThat(parser.parse("""{"site":[{"@name":"http://a.example.com","alerts":[]}]}""")).isEmpty()

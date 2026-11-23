@@ -19,8 +19,11 @@ class ZapReportParser(private val objectMapper: ObjectMapper) {
         }
         if (sites == null || !sites.isArray) throw SiteScanFailedException(UNREADABLE)
 
-        // 같은 주소라도 http와 https가 서로 다른 사이트로 나뉘어 올 수 있다
-        return sites.flatMap { site -> site.path("alerts").toList() }.mapNotNull { alert -> toSiteAlert(alert) }
+        // 같은 주소라도 http와 https가 서로 다른 사이트로 나뉘어 올 수 있어서, 같은 항목은 하나로 합치고 걸린 주소를 모은다
+        return sites.flatMap { site -> site.path("alerts").toList() }
+            .mapNotNull { alert -> toSiteAlert(alert) }
+            .groupBy { alert -> alert.alertRef }
+            .map { (_, sameAlerts) -> sameAlerts.first().copy(urls = sameAlerts.flatMap { it.urls }.distinct()) }
     }
 
     private fun toSiteAlert(alert: JsonNode): SiteAlert? {
