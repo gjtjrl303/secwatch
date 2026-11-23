@@ -63,7 +63,7 @@ class CycloneDxParser(private val objectMapper: ObjectMapper) : DependencyParser
             "cargo" -> PackageReference("crates.io", name, version)
             else -> null
         }
-        return reference?.takeIf { it.name.length <= MAX_NAME_LENGTH && it.version.isNotBlank() && it.version.length <= MAX_VERSION_LENGTH }
+        return reference?.takeIf { it.version.isNotBlank() && it.fitsColumns() }
     }
 
     /** purl은 `+`를 공백으로 쓰지 않으므로, 폼 방식 디코더가 공백으로 바꾸지 않게 먼저 인코딩해 둔다. */
@@ -77,9 +77,6 @@ class CycloneDxParser(private val objectMapper: ObjectMapper) : DependencyParser
         const val COMPONENTS = "components"
         const val SCHEME = "pkg:"
 
-        // dependency 테이블의 name, version 컬럼 길이
-        const val MAX_NAME_LENGTH = 255
-        const val MAX_VERSION_LENGTH = 100
         val PYPI_SEPARATORS = Regex("[-_.]+")
     }
 }
