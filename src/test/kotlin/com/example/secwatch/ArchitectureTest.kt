@@ -5,6 +5,7 @@ import com.tngtech.archunit.core.importer.ImportOption
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses
 import com.tngtech.archunit.library.Architectures.layeredArchitecture
 import com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 
@@ -41,6 +42,20 @@ class ArchitectureTest {
         noClasses().that().haveSimpleNameEndingWith("Controller")
             .should().dependOnClassesThat().haveSimpleNameEndingWith("Repository")
             .check(classes)
+    }
+
+    @Test
+    @DisplayName("허용 표에 없는 새 패키지가 생기면 실패한다")
+    fun every_package_is_in_the_allowed_table() {
+        val packages = classes.map { javaClass -> javaClass.packageName }
+            .filter { packageName -> packageName.startsWith("$BASE_PACKAGE.") }
+            .map { packageName -> packageName.removePrefix("$BASE_PACKAGE.").substringBefore('.') }
+            .toSet()
+
+        val missing = packages - ALLOWED_DEPENDENCIES.keys
+        assertThat(missing)
+            .describedAs("허용 표(ALLOWED_DEPENDENCIES)에 없는 패키지입니다. 가져다 써도 되는 아래 패키지를 정해서 표에 추가하세요.")
+            .isEmpty()
     }
 
     private companion object {
