@@ -3,7 +3,7 @@ package com.example.secwatch.web
 import com.example.secwatch.application.SiteScanRunner
 import com.example.secwatch.common.ApiSuccessResponse
 import com.example.secwatch.sitescan.SiteFinding
-import com.example.secwatch.sitescan.SiteScan
+import com.example.secwatch.sitescan.SiteScanSummary
 import com.example.secwatch.sitescan.SiteScanRecorder
 import java.time.LocalDateTime
 import org.springframework.http.HttpStatus
@@ -60,7 +60,7 @@ class SiteScanController(
     fun findings(@PathVariable id: Long): ApiSuccessResponse<List<SiteFindingResponse>> =
         ApiSuccessResponse(siteScanRecorder.findings(id).map { finding -> finding.toResponse() })
 
-    private fun SiteScan.toResponse() = SiteScanResponse(id!!, scanType.name, status.name, startedAt, finishedAt, errorMessage)
+    private fun SiteScanSummary.toResponse() = SiteScanResponse(id, scanType.name, status.name, startedAt, finishedAt, errorMessage)
 
     private fun SiteFinding.toResponse() = SiteFindingResponse(
         id = id!!,

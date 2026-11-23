@@ -227,6 +227,23 @@ class SiteScanRecorderTest : FakeExternalApiIntegrationTest() {
     }
 
     @Test
+    @DisplayName("점검 기록은 최근 20건만 새것부터 돌려준다")
+    fun scans_are_limited_to_the_latest_twenty() {
+        (1..21).forEach { minutesAgo ->
+            jdbcTemplate.update(
+                "insert into site_scan(project_id, scan_type, status, started_at, raw_json) values (?, 'BASELINE', 'SUCCEEDED', date_sub(now(6), interval ? minute), ?)",
+                projectId, minutesAgo, "{}",
+            )
+        }
+
+        val scans = recorder.scans(projectId)
+
+        assertThat(scans).hasSize(20)
+        assertThat(scans.map { it.startedAt }).isSortedAccordingTo(Comparator.reverseOrder())
+        assertThat(scans.first().status).isEqualTo(SiteScanStatus.SUCCEEDED)
+    }
+
+    @Test
     @DisplayName("상태를 바꾸면 저장하고 변경 이력을 남긴다")
     fun change_status_saves_history() {
         val scan = recorder.start(projectId)
