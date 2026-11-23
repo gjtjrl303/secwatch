@@ -139,6 +139,18 @@ class ZapDockerScannerTest {
     }
 
     @Test
+    @DisplayName("컨테이너를 지우는 명령이 끝나지 않으면 그 명령도 강제로 끝낸다")
+    fun stuck_cleanup_command_is_killed() {
+        val pidFile = tempDir.resolve("rm.pid")
+        val scanner = scanner("sleep 30", Duration.ofMillis(300), onRemove = "echo \$\$ > \"$pidFile\"; exec sleep 60")
+
+        messageOf { scanner.scan("http://localhost:3000") }
+
+        val pid = Files.readString(pidFile).trim().toLong()
+        Awaitility.await().atMost(Duration.ofSeconds(5)).until { !ProcessHandle.of(pid).map { it.isAlive }.orElse(false) }
+    }
+
+    @Test
     @DisplayName("점검 도중 스레드가 중단돼도 컨테이너를 지우고 점검 실패로 끝내며 중단 표시를 남긴다")
     fun interrupted_scan_removes_the_container() {
         val scanner = scanner("sleep 30", Duration.ofSeconds(60))

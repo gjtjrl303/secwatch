@@ -107,13 +107,19 @@ class ZapDockerScanner(
     }
 
     private fun removeContainer(containerName: String) {
-        try {
+        val removal = try {
             ProcessBuilder(dockerCommand, "rm", "-f", containerName).redirectErrorStream(true)
-                .redirectOutput(ProcessBuilder.Redirect.DISCARD).start().waitFor(CLEANUP_SECONDS, TimeUnit.SECONDS)
+                .redirectOutput(ProcessBuilder.Redirect.DISCARD).start()
         } catch (e: IOException) {
             // 컨테이너는 --rm으로 띄워서 끝나면 스스로 지워진다
+            return
+        }
+        try {
+            removal.waitFor(CLEANUP_SECONDS, TimeUnit.SECONDS)
         } catch (e: InterruptedException) {
             Thread.currentThread().interrupt()
+        } finally {
+            if (removal.isAlive) removal.destroyForcibly()
         }
     }
 
