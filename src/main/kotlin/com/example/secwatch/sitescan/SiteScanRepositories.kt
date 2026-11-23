@@ -7,7 +7,13 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 
 interface SiteScanRepository : JpaRepository<SiteScan, Long> {
-    fun findByStatus(status: SiteScanStatus): List<SiteScan>
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from SiteScan s where s.status = :status")
+    fun findByStatusForUpdate(@Param("status") status: SiteScanStatus): List<SiteScan>
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from SiteScan s where s.id = :id and s.status = :status")
+    fun findForUpdate(@Param("id") id: Long, @Param("status") status: SiteScanStatus): SiteScan?
 
     fun findFirstByProjectIdAndStatusOrderByStartedAtDesc(projectId: Long, status: SiteScanStatus): SiteScan?
 

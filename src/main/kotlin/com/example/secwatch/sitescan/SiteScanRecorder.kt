@@ -24,7 +24,7 @@ class SiteScanRecorder(
         val project = projectRepository.findForUpdate(projectId) ?: throw SecwatchException(ErrorCode.NOT_FOUND_PROJECT)
         val now = LocalDateTime.now()
 
-        siteScanRepository.findByStatus(SiteScanStatus.RUNNING).forEach { running ->
+        siteScanRepository.findByStatusForUpdate(SiteScanStatus.RUNNING).forEach { running ->
             // 앱이 꺼지면 진행 중으로 남은 기록이 다음 점검을 영영 막으므로, 오래된 것은 실패로 정리한다
             if (running.startedAt.isAfter(now.minus(staleAfter))) throw SecwatchException(ErrorCode.SCAN_IN_PROGRESS)
             running.fail(STALE_MESSAGE, now)
@@ -38,7 +38,8 @@ class SiteScanRecorder(
 
     @Transactional
     fun succeed(scanId: Long, rawJson: String, alerts: List<SiteAlert>) {
-        val scan = siteScanRepository.findById(scanId).orElseThrow()
+        // 이미 끝난 점검(오래돼서 실패로 정리된 것 포함)의 결과가 뒤늦게 오면 받지 않는다
+        val scan = siteScanRepository.findForUpdate(scanId, SiteScanStatus.RUNNING) ?: return
         val now = LocalDateTime.now()
         val existing = siteFindingRepository.findByProjectId(scan.project.id!!).associateBy { finding -> finding.alertRef }
 
@@ -51,7 +52,7 @@ class SiteScanRecorder(
 
     @Transactional
     fun fail(scanId: Long, errorMessage: String) {
-        siteScanRepository.findById(scanId).orElseThrow().fail(errorMessage, LocalDateTime.now())
+        siteScanRepository.findForUpdate(scanId, SiteScanStatus.RUNNING)?.fail(errorMessage, LocalDateTime.now())
     }
 
     @Transactional

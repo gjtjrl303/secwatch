@@ -191,6 +191,42 @@ class SiteScanRecorderTest : FakeExternalApiIntegrationTest() {
     }
 
     @Test
+    @DisplayName("오래돼서 실패로 정리된 점검의 결과가 뒤늦게 와도 받지 않는다")
+    fun late_result_of_a_stale_scan_is_ignored() {
+        val stuck = recorder.start(projectId)
+        rewindScans(31)
+        val retry = recorder.start(projectId)
+        recorder.succeed(retry.id!!, """{"scan":"retry"}""", listOf(alert("10038-1", name = "from retry")))
+
+        recorder.succeed(stuck.id!!, """{"scan":"stuck"}""", listOf(alert("10038-1", name = "from stuck"), alert("99999-1")))
+
+        assertThat(scanRow(stuck.id!!)["status"]).isEqualTo("FAILED")
+        assertThat(scanRow(stuck.id!!)["raw_json"]).isNull()
+        assertThat(findingRows().map { finding -> listOf(finding["alert_ref"], finding["name"]) })
+            .containsExactly(listOf("10038-1", "from retry"))
+    }
+
+    @Test
+    @DisplayName("이미 끝난 점검은 성공과 실패를 다시 바꿀 수 없다")
+    fun finished_scan_cannot_change_again() {
+        val succeeded = recorder.start(projectId)
+        recorder.succeed(succeeded.id!!, "{}", emptyList())
+        rewindScans(11)
+        val failed = recorder.start(projectId)
+        recorder.fail(failed.id!!, "처음 실패")
+
+        recorder.fail(succeeded.id!!, "뒤늦은 실패")
+        recorder.fail(failed.id!!, "두 번째 실패")
+        recorder.succeed(failed.id!!, "{}", listOf(alert("10038-1")))
+
+        assertThat(scanRow(succeeded.id!!)["status"]).isEqualTo("SUCCEEDED")
+        assertThat(scanRow(succeeded.id!!)["error_message"]).isNull()
+        assertThat(scanRow(failed.id!!)["status"]).isEqualTo("FAILED")
+        assertThat(scanRow(failed.id!!)["error_message"]).isEqualTo("처음 실패")
+        assertThat(findingRows()).isEmpty()
+    }
+
+    @Test
     @DisplayName("상태를 바꾸면 저장하고 변경 이력을 남긴다")
     fun change_status_saves_history() {
         val scan = recorder.start(projectId)
