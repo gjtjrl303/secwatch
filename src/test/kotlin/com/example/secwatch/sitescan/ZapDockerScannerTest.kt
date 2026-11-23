@@ -66,6 +66,24 @@ class ZapDockerScannerTest {
     }
 
     @Test
+    @DisplayName("이름이 localhost로 시작하기만 하는 주소는 바꾸지 않는다")
+    fun host_that_only_starts_with_localhost_is_not_translated() {
+        val result = scanner("$writeReport; exit 0").scan("https://localhost.example.com")
+
+        assertThat(Files.readString(calls)).contains("-t https://localhost.example.com ")
+        assertThat(result).isEqualTo("""{"target":"https://localhost.example.com"}""")
+    }
+
+    @Test
+    @DisplayName("127.0.0.1도 이 컴퓨터를 가리키는 이름으로 바꿔 넘기고 결과에서 되돌린다")
+    fun loopback_address_is_translated() {
+        val result = scanner("$writeReport; exit 0").scan("http://127.0.0.1:8080")
+
+        assertThat(Files.readString(calls)).contains("-t http://host.docker.internal:8080 ")
+        assertThat(result).isEqualTo("""{"target":"http://127.0.0.1:8080"}""")
+    }
+
+    @Test
     @DisplayName("점검 도중 스레드가 중단돼도 컨테이너를 지우고 점검 실패로 끝내며 중단 표시를 남긴다")
     fun interrupted_scan_removes_the_container() {
         val scanner = scanner("sleep 30", Duration.ofSeconds(60))

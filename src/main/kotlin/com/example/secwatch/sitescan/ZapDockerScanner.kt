@@ -20,8 +20,9 @@ class ZapDockerScanner(
 ) : SiteScanner {
 
     override fun scan(targetUrl: String): String {
+        val localHost = localHostOf(targetUrl)
         // 컨테이너 안에서 localhost는 컨테이너 자신이라서, 이 컴퓨터를 가리키는 이름으로 바꿔 넘긴다
-        val containerUrl = LOCAL_HOSTS.fold(targetUrl) { url, host -> url.replace("://$host", "://$HOST_FROM_CONTAINER") }
+        val containerUrl = if (localHost == null) targetUrl else targetUrl.replaceFirst("://$localHost", "://$HOST_FROM_CONTAINER")
         val containerName = "secwatch-zap-" + UUID.randomUUID().toString().take(8)
         val workDir = Files.createTempDirectory("secwatch-zap")
         try {
@@ -31,7 +32,8 @@ class ZapDockerScanner(
 
             val report = workDir.resolve(REPORT_FILE)
             if (!Files.exists(report)) throw SiteScanFailedException("ZAP이 결과 파일을 만들지 않았습니다.")
-            return Files.readString(report).replace(HOST_FROM_CONTAINER, hostOf(targetUrl, containerUrl))
+            val rawJson = Files.readString(report)
+            return if (localHost == null) rawJson else rawJson.replace(HOST_FROM_CONTAINER, localHost)
         } finally {
             workDir.toFile().deleteRecursively()
         }
@@ -84,8 +86,8 @@ class ZapDockerScanner(
         }
     }
 
-    private fun hostOf(targetUrl: String, containerUrl: String): String =
-        if (targetUrl == containerUrl) HOST_FROM_CONTAINER else targetUrl.substringAfter("://").substringBefore(':').substringBefore('/')
+    private fun localHostOf(targetUrl: String): String? =
+        targetUrl.substringAfter("://").substringBefore('/').substringBefore(':').takeIf { host -> host in LOCAL_HOSTS }
 
     private companion object {
         const val HOST_FROM_CONTAINER = "host.docker.internal"
