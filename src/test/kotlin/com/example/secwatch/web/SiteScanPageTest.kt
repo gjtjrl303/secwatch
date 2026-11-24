@@ -83,7 +83,7 @@ class SiteScanPageTest : FakeExternalApiIntegrationTest() {
     fun request_then_findings_are_listed() {
         fakeSiteScanner.result = fixture()
 
-        requestScan().andExpect(status().is3xxRedirection).andExpect(redirectedUrl("/projects/$projectId?tab=site"))
+        requestScan().andExpect(status().is3xxRedirection).andExpect(redirectedUrl("/projects/$projectId?tab=site#site-scan"))
         awaitNoRunningScan()
 
         val html = page().andReturn().response.contentAsString

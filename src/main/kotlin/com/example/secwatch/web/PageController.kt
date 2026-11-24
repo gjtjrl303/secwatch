@@ -175,7 +175,7 @@ class PageController(
     @PostMapping("/projects/{id}/site-scans")
     fun requestSiteScan(@PathVariable id: Long, model: Model): String = try {
         siteScanRunner.request(id)
-        "redirect:/projects/$id?tab=$TAB_SITE"
+        "redirect:/projects/$id?tab=$TAB_SITE#site-scan"
     } catch (e: SecwatchException) {
         renderDetail(id, model, null, null, null, ALL, e.message, TAB_SITE)
     }
