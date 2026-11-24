@@ -10,9 +10,11 @@ import org.springframework.stereotype.Component
 class SiteScanTargets(@Value("\${secwatch.site-scan.allowed-hosts:localhost}") allowedHosts: List<String>) {
     private val allowedHosts = allowedHosts.map { host -> host.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
 
+    fun isAllowed(domain: String): Boolean = domain.substringBefore(':').lowercase() in allowedHosts
+
     fun urlFor(domain: String): String {
         val host = domain.substringBefore(':').lowercase()
-        if (host !in allowedHosts) throw SecwatchException(ErrorCode.SCAN_TARGET_NOT_ALLOWED)
+        if (!isAllowed(domain)) throw SecwatchException(ErrorCode.SCAN_TARGET_NOT_ALLOWED)
         val scheme = if (host in LOCAL_HOSTS) "http" else "https"
         return "$scheme://$domain"
     }

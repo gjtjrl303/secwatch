@@ -101,6 +101,70 @@
         </details>
     </section>
 
+    <h2 id="site-scan">사이트 점검</h2>
+    <p class="muted">ZAP으로 사이트를 둘러보며 응답을 살펴봅니다. 공격 요청은 보내지 않고 POST 폼은 제출하지 않습니다. SQL 주입처럼 값을 넣어 봐야 드러나는 문제는 찾지 못합니다.</p>
+    <p th:if="${siteScanError}" class="error" th:text="${siteScanError}"></p>
+    <p th:unless="${siteScanAllowed}" class="muted">이 프로젝트의 도메인은 점검 허용 목록에 없어서 점검할 수 없습니다.</p>
+    <form th:if="${siteScanAllowed}" method="post" th:action="@{/projects/{id}/site-scans(id=${project.id})}">
+        <button type="submit" th:disabled="${siteScanRunning}">사이트 점검 실행</button>
+    </form>
+    <p th:if="${siteScanRunning}" class="muted">점검이 진행 중입니다. 1분쯤 뒤에 새로고침해 주세요.</p>
+    <p th:if="${siteScans.empty}" class="muted">아직 사이트 점검을 하지 않았습니다.</p>
+    <div class="table-scroll" th:unless="${siteScans.empty}">
+        <table>
+            <thead><tr><th>시작</th><th>결과</th><th>끝</th><th>실패 이유</th></tr></thead>
+            <tbody>
+            <tr th:each="s : ${siteScans}">
+                <td class="nowrap" th:text="${#temporals.format(s.startedAt, 'yyyy-MM-dd HH:mm')}"></td>
+                <td th:text="${s.statusLabel}"></td>
+                <td class="nowrap" th:text="${s.finishedAt != null} ? ${#temporals.format(s.finishedAt, 'yyyy-MM-dd HH:mm')} : ''"></td>
+                <td th:text="${s.errorMessage}"></td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <p th:if="${!siteScans.empty and siteFindings.empty}" class="muted">사이트 점검에서 발견된 항목이 없습니다.</p>
+    <div class="table-scroll" th:unless="${siteFindings.empty}">
+        <table>
+            <thead><tr><th>위험도</th><th>내용</th><th>고치는 방법</th><th>상태</th></tr></thead>
+            <tbody>
+            <tr th:each="f : ${siteFindings}" th:id="'sf' + ${f.id}"
+                th:classappend="${f.status == 'RESOLVED' or f.status == 'NOT_APPLICABLE'} ? 'closed'">
+                <td><span th:class="'badge ' + ${f.badge}" th:text="${f.riskLabel}"></span></td>
+                <td class="wrap-anywhere">
+                    <strong th:text="${f.name}"></strong>
+                    <span th:if="${f.typeLabel}" class="muted" th:text="'(' + ${f.typeLabel} + ')'"></span><br>
+                    <span th:text="${f.description}"></span>
+                    <span th:unless="${f.seenInLatestScan}" class="muted"><br>최근 점검에서는 나오지 않았습니다.</span>
+                    <details>
+                        <summary th:text="'걸린 주소 ' + ${f.instanceCount} + '곳'"></summary>
+                        <ul>
+                            <li th:each="u : ${f.sampleUrls}" th:text="${u}"></li>
+                        </ul>
+                    </details>
+                </td>
+                <td class="wrap-anywhere">
+                    <span th:text="${f.solution}"></span>
+                    <details th:unless="${f.references.empty}">
+                        <summary>참고 자료</summary>
+                        <ul>
+                            <li th:each="r : ${f.references}"><a th:href="${r}" rel="noopener noreferrer" target="_blank" th:text="${r}"></a></li>
+                        </ul>
+                    </details>
+                </td>
+                <td>
+                    <form method="post" th:action="@{/projects/{pid}/site-findings/{fid}/status(pid=${project.id},fid=${f.id})}">
+                        <select name="status" onchange="this.form.submit()" th:attr="aria-label='상태 변경: ' + ${f.name}">
+                            <option th:each="s : ${statuses}" th:value="${s.value}" th:text="${s.label}" th:selected="${s.value == f.status}"></option>
+                        </select>
+                        <noscript><button type="submit">저장</button></noscript>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
     <h2>의존성 다시 가져오기</h2>
     <p th:if="${importError}" class="error" th:text="${importError}"></p>
     <form method="post" enctype="multipart/form-data" th:action="@{/projects/{id}/dependencies(id=${project.id})}">
