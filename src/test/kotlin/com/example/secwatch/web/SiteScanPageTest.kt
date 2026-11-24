@@ -221,6 +221,42 @@ class SiteScanPageTest : FakeExternalApiIntegrationTest() {
     }
 
     @Test
+    @DisplayName("실패한 점검이 많이 쌓여도 가장 최근 성공한 점검을 기준으로 나오지 않은 항목을 표시한다")
+    fun latest_success_is_found_past_many_failures() {
+        jdbcTemplate.update(
+            "insert into site_scan(project_id, scan_type, status, started_at, finished_at, raw_json) values (?, 'BASELINE', 'SUCCEEDED', date_sub(now(6), interval 120 minute), date_sub(now(6), interval 119 minute), '{}')",
+            projectId,
+        )
+        (1..20).forEach { minutesAgo ->
+            jdbcTemplate.update(
+                "insert into site_scan(project_id, scan_type, status, started_at, finished_at, error_message) values (?, 'BASELINE', 'FAILED', date_sub(now(6), interval ? minute), now(6), '실패')",
+                projectId, minutesAgo,
+            )
+        }
+        jdbcTemplate.update(
+            "insert into site_finding(project_id, alert_ref, name, risk, description, solution, reference, cwe_id, instance_count, sample_urls, status, first_seen_at, last_seen_at) values (?, '1-1', 'Old Alert', 'MEDIUM', 'd', 's', '', null, 1, '', 'NEW', date_sub(now(6), interval 300 minute), date_sub(now(6), interval 300 minute))",
+            projectId,
+        )
+
+        page().andExpect(content().string(containsString("최근 점검에서는 나오지 않았습니다")))
+    }
+
+    @Test
+    @DisplayName("너무 오래 진행 중으로 남은 점검은 막지 않고 버튼을 다시 누를 수 있다")
+    fun stale_running_scan_does_not_disable_the_button() {
+        jdbcTemplate.update(
+            "insert into site_scan(project_id, scan_type, status, started_at) values (?, 'BASELINE', 'RUNNING', date_sub(now(6), interval 31 minute))",
+            projectId,
+        )
+
+        page()
+            .andExpect(content().string(not(containsString("점검이 진행 중입니다."))))
+            .andExpect(content().string(not(containsString("disabled"))))
+        requestScan().andExpect(status().is3xxRedirection)
+        awaitNoRunningScan()
+    }
+
+    @Test
     @DisplayName("점검한 적이 없으면 발견 항목 자리에 아직 점검하지 않았다고 나온다")
     fun never_scanned_shows_a_hint() {
         page().andExpect(content().string(containsString("아직 사이트 점검을 하지 않았습니다.")))

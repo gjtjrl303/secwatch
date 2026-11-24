@@ -85,6 +85,13 @@ class SiteScanRecorder(
         siteFindingRepository.findByProjectId(projectId)
             .sortedWith(compareBy<SiteFinding>({ finding -> finding.risk.ordinal }, { finding -> finding.id }))
 
+    /** 오래돼서 [start]가 실패로 정리할 진행 중 기록은 도는 것으로 보지 않는다. 화면이 그런 기록 때문에 버튼을 막지 않게 하기 위해서다. */
+    @Transactional(readOnly = true)
+    fun isRunning(projectId: Long): Boolean {
+        val running = siteScanRepository.findFirstByProjectIdAndStatusOrderByStartedAtDesc(projectId, SiteScanStatus.RUNNING) ?: return false
+        return running.startedAt.isAfter(LocalDateTime.now().minus(staleAfter))
+    }
+
     @Transactional(readOnly = true)
     fun latestSucceeded(projectId: Long): SiteScanSummary? =
         siteScanRepository.findFirstByProjectIdAndStatusOrderByStartedAtDesc(projectId, SiteScanStatus.SUCCEEDED)

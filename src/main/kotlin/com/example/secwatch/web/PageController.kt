@@ -239,7 +239,7 @@ class PageController(
 
         model.addAttribute("siteScanError", siteScanError)
         model.addAttribute("siteScanAllowed", siteScanTargets.isAllowed(domain))
-        model.addAttribute("siteScanRunning", scans.any { scan -> scan.status == SiteScanStatus.RUNNING })
+        model.addAttribute("siteScanRunning", siteScanRecorder.isRunning(projectId))
         model.addAttribute("siteScans", scans.take(SHOWN_SITE_SCANS).map { scan -> scan.toRow() })
         model.addAttribute("siteFindings", siteScanRecorder.findings(projectId).map { finding -> finding.toRow(latestSucceeded) })
     }
