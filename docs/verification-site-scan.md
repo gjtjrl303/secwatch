@@ -23,9 +23,10 @@
    docker run -d --name secwatch-juice -p 127.0.0.1:3000:3000 bkimminich/juice-shop:latest
    ```
 2. 앱을 띄우고(`SERVER_PORT=8081 ./gradlew bootRun`) 도메인이 `localhost:3000`인 프로젝트를 등록합니다.
-3. 상세 화면의 "사이트 점검 실행"을 누르거나 API로 요청합니다.
+3. 상세 화면의 "사이트 점검 실행"을 누르거나 API로 요청합니다. `PROJECT_ID`에는 2번에서 등록한 프로젝트 번호를 넣습니다.
    ```bash
-   curl -X POST http://localhost:8081/api/projects/<번호>/site-scans
+   PROJECT_ID=1
+   curl -X POST "http://localhost:8081/api/projects/$PROJECT_ID/site-scans"
    ```
 4. 점검 기록이 성공이나 실패로 바뀔 때까지 기다리며, 그동안 ZAP 컨테이너(`secwatch-zap-*`)의 메모리를 `docker stats`로 2초마다 쟀습니다.
 5. 발견 항목을 화면과 `GET /api/projects/<번호>/site-findings`로 확인합니다.
