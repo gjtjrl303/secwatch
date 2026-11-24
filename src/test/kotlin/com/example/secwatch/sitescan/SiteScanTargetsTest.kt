@@ -40,9 +40,10 @@ class SiteScanTargetsTest {
     }
 
     @Test
-    @DisplayName("허용 목록이 비어 있으면 아무 주소도 점검할 수 없다")
-    fun empty_allow_list_rejects_everything() {
-        assertThat(assertThrows<SecwatchException> { targets().urlFor("localhost:3000") }.errorCode)
-            .isEqualTo(ErrorCode.SCAN_TARGET_NOT_ALLOWED)
+    @DisplayName("허용 목록이 비어 있으면 모든 주소를 점검한다")
+    fun empty_allow_list_allows_everything() {
+        assertThat(targets().urlFor("localhost:3000")).isEqualTo("http://localhost:3000")
+        assertThat(targets().urlFor("dev.example.com")).isEqualTo("https://dev.example.com")
+        assertThat(targets("", " ").isAllowed("example.com")).isTrue()
     }
 }

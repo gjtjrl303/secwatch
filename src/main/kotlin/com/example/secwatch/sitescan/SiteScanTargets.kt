@@ -5,12 +5,12 @@ import com.example.secwatch.common.SecwatchException
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 
-// 소유 확인(#47)을 붙이기 전까지는 운영자가 설정에 적은 주소만 점검한다
+// 허용 목록이 비어 있으면 모든 주소를 점검한다. 배포할 때는 목록을 채우거나 소유 확인(#47)을 붙인다.
 @Component
-class SiteScanTargets(@Value("\${secwatch.site-scan.allowed-hosts:localhost}") allowedHosts: List<String>) {
+class SiteScanTargets(@Value("\${secwatch.site-scan.allowed-hosts:}") allowedHosts: List<String>) {
     private val allowedHosts = allowedHosts.map { host -> host.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
 
-    fun isAllowed(domain: String): Boolean = domain.substringBefore(':').lowercase() in allowedHosts
+    fun isAllowed(domain: String): Boolean = allowedHosts.isEmpty() || domain.substringBefore(':').lowercase() in allowedHosts
 
     fun urlFor(domain: String): String {
         val host = domain.substringBefore(':').lowercase()
