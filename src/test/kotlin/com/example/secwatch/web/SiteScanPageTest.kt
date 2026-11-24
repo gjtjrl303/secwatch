@@ -42,7 +42,7 @@ class SiteScanPageTest : FakeExternalApiIntegrationTest() {
     private fun report(name: String, ref: String = "1-1", cwe: String = "693") =
         """{"site":[{"@name":"http://localhost:3000","alerts":[{"pluginid":"1","alertRef":"$ref","name":"$name","riskcode":"2","desc":"<p>설명</p>","solution":"<p>고치는 방법</p>","reference":"<p>https://example.com/ref</p>","cweid":"$cwe","instances":[{"uri":"http://localhost:3000/a"}]}]}]}"""
 
-    private fun page(id: Long = projectId) = mockMvc.perform(get("/projects/$id"))
+    private fun page(id: Long = projectId) = mockMvc.perform(get("/projects/$id?tab=site"))
 
     private fun requestScan(id: Long = projectId) = mockMvc.perform(post("/projects/$id/site-scans"))
 
@@ -79,11 +79,11 @@ class SiteScanPageTest : FakeExternalApiIntegrationTest() {
     }
 
     @Test
-    @DisplayName("점검을 요청하면 상세 화면의 사이트 점검 자리로 돌아오고, 끝나면 발견 항목이 위험도와 함께 나온다")
+    @DisplayName("점검을 요청하면 사이트 점검 탭으로 돌아오고, 끝나면 발견 항목이 위험도와 함께 나온다")
     fun request_then_findings_are_listed() {
         fakeSiteScanner.result = fixture()
 
-        requestScan().andExpect(status().is3xxRedirection).andExpect(redirectedUrl("/projects/$projectId#site-scan"))
+        requestScan().andExpect(status().is3xxRedirection).andExpect(redirectedUrl("/projects/$projectId?tab=site"))
         awaitNoRunningScan()
 
         val html = page().andReturn().response.contentAsString
@@ -186,7 +186,7 @@ class SiteScanPageTest : FakeExternalApiIntegrationTest() {
 
         mockMvc.perform(post("/projects/$projectId/site-findings/$findingId/status").param("status", "NOT_APPLICABLE"))
             .andExpect(status().is3xxRedirection)
-            .andExpect(redirectedUrl("/projects/$projectId#sf$findingId"))
+            .andExpect(redirectedUrl("/projects/$projectId?tab=site#sf$findingId"))
 
         assertThat(jdbcTemplate.queryForObject("select status from site_finding where id = ?", String::class.java, findingId)).isEqualTo("NOT_APPLICABLE")
         page().andExpect(content().string(containsString("id=\"sf$findingId\"")))

@@ -24,7 +24,7 @@
         </div>
         <div class="actions">
             <a class="button" th:href="@{/}">목록으로</a>
-            <a class="button primary" href="#reimport">파일 다시 올리기</a>
+            <a class="button primary" th:href="@{/projects/{id}(id=${project.id},tab='settings')}">파일 다시 올리기</a>
         </div>
     </header>
     <p th:if="${project.lastCheckError}" class="error" th:text="${project.lastCheckError}"></p>
@@ -54,7 +54,7 @@
             </th:block>
             <span th:unless="${topPackage}" class="sub">열린 항목이 없습니다.</span>
         </div>
-        <a class="tile tile-site" href="#site-scan">
+        <a class="tile tile-site" th:href="@{/projects/{id}(id=${project.id},tab='site')}">
             <span class="label">사이트 점검</span>
             <th:block th:if="${!siteScanAllowed}">
                 <strong class="mid">허용 목록 밖</strong>
@@ -75,7 +75,14 @@
         </a>
     </section>
 
-    <h2 id="findings">취약점</h2>
+    <nav class="tabs" aria-label="상세 화면 탭">
+        <a th:aria-current="${tab == 'libraries'} ? 'page'" th:href="@{/projects/{id}(id=${project.id})}">라이브러리 취약점 <span class="n" th:text="${openTotal}"></span></a>
+        <a th:aria-current="${tab == 'site'} ? 'page'" th:href="@{/projects/{id}(id=${project.id},tab='site')}">사이트 점검 <span class="n" th:text="${siteFindings.size()}"></span></a>
+        <a th:aria-current="${tab == 'settings'} ? 'page'" th:href="@{/projects/{id}(id=${project.id},tab='settings')}">설정</a>
+    </nav>
+
+    <section th:if="${tab == 'libraries'}" aria-labelledby="findings">
+    <h2 id="findings">라이브러리 취약점</h2>
     <details class="guide">
         <summary>위험도 기준</summary>
         <ul>
@@ -147,6 +154,9 @@
         </details>
     </section>
 
+    </section>
+
+    <section th:if="${tab == 'site'}" aria-labelledby="site-scan">
     <h2 id="site-scan">사이트 점검</h2>
     <p class="muted">ZAP으로 사이트를 둘러보며 응답을 살펴봅니다. 공격 요청은 보내지 않고 POST 폼은 제출하지 않습니다. SQL 주입처럼 값을 넣어 봐야 드러나는 문제는 찾지 못합니다.</p>
     <p th:if="${siteScanError}" class="error" th:text="${siteScanError}"></p>
@@ -215,6 +225,9 @@
         </table>
     </div>
 
+    </section>
+
+    <section th:if="${tab == 'settings'}" aria-labelledby="reimport">
     <h2 id="reimport">의존성 다시 가져오기</h2>
     <p th:if="${importError}" class="error" th:text="${importError}"></p>
     <form class="panel stack" method="post" enctype="multipart/form-data" th:action="@{/projects/{id}/dependencies(id=${project.id})}">
@@ -242,6 +255,7 @@
         <p class="muted">웹훅 주소는 비밀값이라 저장한 뒤에는 화면에 다시 보여주지 않습니다. 새 주소를 넣으면 바뀝니다.</p>
         <button class="primary" type="submit">저장</button>
     </form>
+    </section>
 </main>
 </div>
 </body>

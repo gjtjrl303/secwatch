@@ -128,8 +128,9 @@ class PageController(
         @PathVariable id: Long,
         @RequestParam(required = false) severity: String?,
         @RequestParam(required = false) status: String?,
+        @RequestParam(required = false) tab: String?,
         model: Model,
-    ): String = renderDetail(id, model, null, null, parseSeverityFilter(severity), normalizeStatusFilter(status))
+    ): String = renderDetail(id, model, null, null, parseSeverityFilter(severity), normalizeStatusFilter(status), tab = normalizeTab(tab))
 
     @PostMapping("/projects/{id}/dependencies")
     fun reimport(
@@ -141,16 +142,16 @@ class PageController(
         dependencyImporter.import(id, dependencyContent(file, lockfile))
         "redirect:/projects/$id"
     } catch (e: SecwatchException) {
-        renderDetail(id, model, e.message, null, null, ALL)
+        renderDetail(id, model, e.message, null, null, ALL, tab = TAB_SETTINGS)
     }
 
     /** 실패해서 다시 그릴 때 입력한 웹훅 주소는 되돌려 담지 않는다. */
     @PostMapping("/projects/{id}/notification")
     fun changeWebhook(@PathVariable id: Long, @RequestParam(defaultValue = "") webhookUrl: String, model: Model): String = try {
         projectManagement.changeWebhook(id, webhookUrl)
-        "redirect:/projects/$id"
+        "redirect:/projects/$id?tab=$TAB_SETTINGS"
     } catch (e: SecwatchException) {
-        renderDetail(id, model, null, e.message, null, ALL)
+        renderDetail(id, model, null, e.message, null, ALL, tab = TAB_SETTINGS)
     }
 
     @PostMapping("/projects/{id}/findings/{findingId}/status")
@@ -174,9 +175,9 @@ class PageController(
     @PostMapping("/projects/{id}/site-scans")
     fun requestSiteScan(@PathVariable id: Long, model: Model): String = try {
         siteScanRunner.request(id)
-        "redirect:/projects/$id#site-scan"
+        "redirect:/projects/$id?tab=$TAB_SITE"
     } catch (e: SecwatchException) {
-        renderDetail(id, model, null, null, null, ALL, e.message)
+        renderDetail(id, model, null, null, null, ALL, e.message, TAB_SITE)
     }
 
     @PostMapping("/projects/{id}/site-findings/{findingId}/status")
@@ -184,7 +185,7 @@ class PageController(
         val target = FindingStatus.entries.firstOrNull { candidate -> candidate.name == status.uppercase() }
             ?: throw SecwatchException(ErrorCode.INVALID_STATUS)
         siteScanRecorder.changeStatus(findingId, target, id)
-        return "redirect:/projects/$id#sf$findingId"
+        return "redirect:/projects/$id?tab=$TAB_SITE#sf$findingId"
     }
 
     private fun renderDetail(
@@ -195,8 +196,10 @@ class PageController(
         severity: Severity?,
         status: String,
         siteScanError: String? = null,
+        tab: String = TAB_LIBRARIES,
     ): String {
         val project = projectManagement.get(id)
+        model.addAttribute("tab", tab)
         addSiteScan(model, id, project.domain, siteScanError)
         val all = findingService.list(id, null, null).map { finding -> finding.toRow() }
         val open = all.filter { row -> row.status in OPEN_STATUS_NAMES }
@@ -278,6 +281,8 @@ class PageController(
         else -> findingStatus == filter
     }
 
+    private fun normalizeTab(value: String?): String = value?.takeIf { candidate -> candidate in TABS } ?: TAB_LIBRARIES
+
     private fun parseSeverityFilter(value: String?): Severity? =
         Severity.entries.firstOrNull { candidate -> candidate.name == value?.uppercase() }
 
@@ -332,6 +337,10 @@ class PageController(
         const val OPEN = "open"
         const val BYTE_ORDER_MARK = "\uFEFF"
         const val SHOWN_SITE_SCANS = 5
+        const val TAB_LIBRARIES = "libraries"
+        const val TAB_SITE = "site"
+        const val TAB_SETTINGS = "settings"
+        val TABS = setOf(TAB_LIBRARIES, TAB_SITE, TAB_SETTINGS)
         val SITE_SCAN_STATUS_LABELS = mapOf(
             SiteScanStatus.RUNNING to "진행 중",
             SiteScanStatus.SUCCEEDED to "성공",
