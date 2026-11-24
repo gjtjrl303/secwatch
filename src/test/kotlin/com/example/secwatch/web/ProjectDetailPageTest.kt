@@ -13,6 +13,7 @@ import java.time.LocalDateTime
 import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers.containsString
 import org.hamcrest.Matchers.not
+import org.hamcrest.Matchers.nullValue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -24,6 +25,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.model
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.view
@@ -98,6 +100,40 @@ class ProjectDetailPageTest : FakeExternalApiIntegrationTest() {
             .andExpect(content().string(containsString("열린 취약점 2건")))
             .andExpect(content().string(containsString("치명 1")))
             .andExpect(content().string(containsString("높음 1")))
+    }
+
+    @Test
+    @DisplayName("위 요약에 열린 항목이 가장 많은 라이브러리를 보여준다")
+    fun summary_shows_the_library_with_the_most_open_findings() {
+        saveFinding("GHSA-A1", Severity.LOW, packageName = "aaa")
+        saveFinding("GHSA-B1", Severity.HIGH, packageName = "bbb")
+        saveFinding("GHSA-B2", Severity.LOW, packageName = "bbb")
+        saveFinding("GHSA-A2", Severity.LOW, FindingStatus.RESOLVED, packageName = "aaa")
+        saveFinding("GHSA-A3", Severity.LOW, FindingStatus.RESOLVED, packageName = "aaa")
+
+        page()
+            .andExpect(model().attribute("topPackage", TopPackage("bbb@4.17.20", 2, "높음")))
+            .andExpect(content().string(containsString("열린 항목 2건")))
+    }
+
+    @Test
+    @DisplayName("열린 항목이 없으면 가장 많은 라이브러리를 보여주지 않는다")
+    fun summary_has_no_top_library_without_open_findings() {
+        saveFinding("GHSA-A1", Severity.LOW, FindingStatus.RESOLVED, packageName = "aaa")
+
+        page().andExpect(model().attribute("topPackage", nullValue()))
+    }
+
+    @Test
+    @DisplayName("위험도 막대는 열린 항목 수만큼 칸을 나눈다")
+    fun severity_bar_uses_open_counts() {
+        saveFinding("GHSA-H1", Severity.HIGH)
+        saveFinding("GHSA-H2", Severity.HIGH)
+        saveFinding("GHSA-L1", Severity.LOW)
+
+        page()
+            .andExpect(content().string(containsString("flex-grow: 2")))
+            .andExpect(content().string(containsString("flex-grow: 1")))
     }
 
     @Test

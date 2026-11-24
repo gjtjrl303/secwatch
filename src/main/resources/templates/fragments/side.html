@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<nav th:fragment="side(active)" class="side" aria-label="메뉴">
+    <a class="brand" th:href="@{/}" aria-label="secwatch 처음으로"><i></i></a>
+    <a th:href="@{/}" th:classappend="${active == 'list'} ? 'on'">목록</a>
+    <a th:href="@{/projects/new}" th:classappend="${active == 'new'} ? 'on'">등록</a>
+</nav>
+
+<th:block th:fragment="head">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&amp;family=Space+Grotesk:wght@500;700&amp;display=swap">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</th:block>
+</body>
+</html>

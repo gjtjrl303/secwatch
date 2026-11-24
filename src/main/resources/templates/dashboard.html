@@ -4,21 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>secwatch</title>
-    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <th:block th:replace="~{fragments/side :: head}"></th:block>
 </head>
 <body>
+<div class="app">
+<nav th:replace="~{fragments/side :: side('list')}"></nav>
 <main>
     <header class="top">
-        <h1>secwatch</h1>
-        <a class="button" th:href="@{/projects/new}">새 프로젝트 등록</a>
+        <div>
+            <p class="crumb">라이브러리 취약점과 사이트 점검</p>
+            <h1>secwatch</h1>
+        </div>
+        <a class="button primary" th:href="@{/projects/new}">새 프로젝트 등록</a>
     </header>
-    <p th:if="${rows.empty}" class="muted">등록된 프로젝트가 없습니다.</p>
-    <table th:unless="${rows.empty}">
+    <p th:if="${rows.empty}" class="panel muted">등록된 프로젝트가 없습니다.</p>
+    <div class="table-scroll tbl" th:unless="${rows.empty}">
+    <table>
         <thead><tr><th>프로젝트</th><th>도메인</th><th>열린 취약점</th></tr></thead>
         <tbody>
-        <tr th:each="r : ${rows}">
+        <tr class="project-row" th:each="r : ${rows}">
             <td><a th:href="@{/projects/{id}(id=${r.id})}" th:text="${r.name}"></a></td>
-            <td th:text="${r.domain}"></td>
+            <td class="domain" th:text="${r.domain}"></td>
             <td>
                 <span th:if="${r.counts.empty}" class="muted">없음</span>
                 <span th:each="c : ${r.counts}" th:class="'badge sev-' + ${#strings.toLowerCase(c.severity)}" th:text="${c.text}"></span>
@@ -26,6 +32,8 @@
         </tr>
         </tbody>
     </table>
+    </div>
 </main>
+</div>
 </body>
 </html>
