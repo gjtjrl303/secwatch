@@ -45,6 +45,10 @@ abstract class DbIntegrationTest : MySqlIntegrationTest() {
     fun <T> blockedWhileFindingIsLocked(findingId: Long, uncommitted: () -> Unit = {}, action: () -> T): T =
         blockedWhileRowIsLocked("select id from finding where id = ? for update", findingId, uncommitted, action)
 
+    /** 다른 트랜잭션이 사이트 발견 항목 행을 잠그고 [uncommitted]를 커밋 없이 실행하는 동안 [action]을 두 번째 스레드에서 시작한다. */
+    fun <T> blockedWhileSiteFindingIsLocked(siteFindingId: Long, uncommitted: () -> Unit = {}, action: () -> T): T =
+        blockedWhileRowIsLocked("select id from site_finding where id = ? for update", siteFindingId, uncommitted, action)
+
     private fun <T> blockedWhileRowIsLocked(lockSql: String, id: Long, uncommitted: () -> Unit, action: () -> T): T {
         val locked = CountDownLatch(1)
         val release = CountDownLatch(1)

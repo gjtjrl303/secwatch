@@ -44,11 +44,20 @@ class SiteScanRecorder(
         // 이미 끝난 점검(오래돼서 실패로 정리된 것 포함)의 결과가 뒤늦게 오면 받지 않는다
         val scan = siteScanRepository.findForUpdate(scanId, SiteScanStatus.RUNNING) ?: return
         val now = LocalDateTime.now()
-        val existing = siteFindingRepository.findByProjectId(scan.project.id!!).associateBy { finding -> finding.alertRef }
+        val existing = siteFindingRepository.findByProjectIdForUpdate(scan.project.id!!).associateBy { finding -> finding.alertRef }
 
         alerts.distinctBy { alert -> alert.alertRef }.forEach { alert ->
             val finding = existing[alert.alertRef]
-            if (finding == null) siteFindingRepository.save(SiteFinding(scan.project, alert, now)) else finding.seenAgain(alert, now)
+            if (finding == null) {
+                siteFindingRepository.save(SiteFinding(scan.project, alert, now))
+            } else {
+                finding.seenAgain(alert, now)
+                // 고쳤다고 표시한 문제가 다시 나왔으면 고쳐지지 않은 것이라 다시 연다. 해당 없음은 사람의 판단이라 그대로 둔다.
+                if (finding.status == FindingStatus.RESOLVED) {
+                    finding.changeStatus(FindingStatus.NEW)
+                    siteFindingStatusHistoryRepository.save(SiteFindingStatusHistory(finding, FindingStatus.RESOLVED, FindingStatus.NEW, now))
+                }
+            }
         }
         scan.succeed(rawJson, now)
     }
@@ -75,6 +84,17 @@ class SiteScanRecorder(
     fun findings(projectId: Long): List<SiteFinding> =
         siteFindingRepository.findByProjectId(projectId)
             .sortedWith(compareBy<SiteFinding>({ finding -> finding.risk.ordinal }, { finding -> finding.id }))
+
+    /** 오래돼서 [start]가 실패로 정리할 진행 중 기록은 도는 것으로 보지 않는다. 화면이 그런 기록 때문에 버튼을 막지 않게 하기 위해서다. */
+    @Transactional(readOnly = true)
+    fun isRunning(projectId: Long): Boolean {
+        val running = siteScanRepository.findFirstByProjectIdAndStatusOrderByStartedAtDesc(projectId, SiteScanStatus.RUNNING) ?: return false
+        return running.startedAt.isAfter(LocalDateTime.now().minus(staleAfter))
+    }
+
+    @Transactional(readOnly = true)
+    fun latestSucceeded(projectId: Long): SiteScanSummary? =
+        siteScanRepository.findFirstByProjectIdAndStatusOrderByStartedAtDesc(projectId, SiteScanStatus.SUCCEEDED)
 
     @Transactional(readOnly = true)
     fun scans(projectId: Long): List<SiteScanSummary> = siteScanRepository.findTop20ByProjectIdOrderByStartedAtDesc(projectId)

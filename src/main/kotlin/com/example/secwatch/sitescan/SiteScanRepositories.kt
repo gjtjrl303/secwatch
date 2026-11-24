@@ -42,6 +42,11 @@ interface SiteScanRepository : JpaRepository<SiteScan, Long> {
 interface SiteFindingRepository : JpaRepository<SiteFinding, Long> {
     fun findByProjectId(projectId: Long): List<SiteFinding>
 
+    /** 점검 결과로 상태를 바꿀 때 사람의 상태 변경과 한 줄로 세운다. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select f from SiteFinding f where f.project.id = :projectId")
+    fun findByProjectIdForUpdate(@Param("projectId") projectId: Long): List<SiteFinding>
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select f from SiteFinding f where f.id = :id")
     fun findForUpdate(@Param("id") id: Long): SiteFinding?

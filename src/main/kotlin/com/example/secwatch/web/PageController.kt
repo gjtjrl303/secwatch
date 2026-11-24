@@ -1,6 +1,7 @@
 package com.example.secwatch.web
 
 import com.example.secwatch.application.ProjectSetup
+import com.example.secwatch.application.SiteScanRunner
 import com.example.secwatch.common.ErrorCode
 import com.example.secwatch.common.SecwatchException
 import com.example.secwatch.common.Severity
@@ -9,9 +10,16 @@ import com.example.secwatch.finding.Finding
 import com.example.secwatch.finding.FindingService
 import com.example.secwatch.finding.FindingStatus
 import com.example.secwatch.finding.FixAdvice
+import com.example.secwatch.finding.VulnerabilityType
 import com.example.secwatch.finding.VulnerabilityTypeReader
 import com.example.secwatch.project.Project
 import com.example.secwatch.project.ProjectManagement
+import com.example.secwatch.sitescan.SiteFinding
+import com.example.secwatch.sitescan.SiteRisk
+import com.example.secwatch.sitescan.SiteScanRecorder
+import com.example.secwatch.sitescan.SiteScanStatus
+import com.example.secwatch.sitescan.SiteScanSummary
+import com.example.secwatch.sitescan.SiteScanTargets
 import java.time.LocalDateTime
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
@@ -56,6 +64,23 @@ data class FindingRow(
     val statusLabel: String,
 )
 
+data class SiteScanRow(val statusLabel: String, val startedAt: LocalDateTime, val finishedAt: LocalDateTime?, val errorMessage: String?)
+
+data class SiteFindingRow(
+    val id: Long,
+    val badge: String,
+    val riskLabel: String,
+    val name: String,
+    val typeLabel: String?,
+    val description: String,
+    val solution: String,
+    val references: List<String>,
+    val sampleUrls: List<String>,
+    val instanceCount: Int,
+    val status: String,
+    val seenInLatestScan: Boolean,
+)
+
 @Controller
 class PageController(
     private val projectManagement: ProjectManagement,
@@ -63,6 +88,9 @@ class PageController(
     private val projectSetup: ProjectSetup,
     private val dependencyImporter: DependencyImporter,
     private val vulnerabilityTypeReader: VulnerabilityTypeReader,
+    private val siteScanRunner: SiteScanRunner,
+    private val siteScanRecorder: SiteScanRecorder,
+    private val siteScanTargets: SiteScanTargets,
 ) {
     @GetMapping("/")
     fun dashboard(model: Model): String {
@@ -141,8 +169,33 @@ class PageController(
         return "redirect:" + back.fragment("f$findingId").build().encode().toUriString()
     }
 
-    private fun renderDetail(id: Long, model: Model, importError: String?, webhookError: String?, severity: Severity?, status: String): String {
+    @PostMapping("/projects/{id}/site-scans")
+    fun requestSiteScan(@PathVariable id: Long, model: Model): String = try {
+        siteScanRunner.request(id)
+        "redirect:/projects/$id#site-scan"
+    } catch (e: SecwatchException) {
+        renderDetail(id, model, null, null, null, ALL, e.message)
+    }
+
+    @PostMapping("/projects/{id}/site-findings/{findingId}/status")
+    fun changeSiteFindingStatus(@PathVariable id: Long, @PathVariable findingId: Long, @RequestParam status: String): String {
+        val target = FindingStatus.entries.firstOrNull { candidate -> candidate.name == status.uppercase() }
+            ?: throw SecwatchException(ErrorCode.INVALID_STATUS)
+        siteScanRecorder.changeStatus(findingId, target, id)
+        return "redirect:/projects/$id#sf$findingId"
+    }
+
+    private fun renderDetail(
+        id: Long,
+        model: Model,
+        importError: String?,
+        webhookError: String?,
+        severity: Severity?,
+        status: String,
+        siteScanError: String? = null,
+    ): String {
         val project = projectManagement.get(id)
+        addSiteScan(model, id, project.domain, siteScanError)
         val all = findingService.list(id, null, null).map { finding -> finding.toRow() }
         val open = all.filter { row -> row.status in OPEN_STATUS_NAMES }
         val shown = all
@@ -179,6 +232,34 @@ class PageController(
         if (file == null || file.isEmpty) return pasted
         return String(file.bytes, Charsets.UTF_8).removePrefix(BYTE_ORDER_MARK)
     }
+
+    private fun addSiteScan(model: Model, projectId: Long, domain: String, siteScanError: String?) {
+        val scans = siteScanRecorder.scans(projectId)
+        val latestSucceeded = siteScanRecorder.latestSucceeded(projectId)
+
+        model.addAttribute("siteScanError", siteScanError)
+        model.addAttribute("siteScanAllowed", siteScanTargets.isAllowed(domain))
+        model.addAttribute("siteScanRunning", siteScanRecorder.isRunning(projectId))
+        model.addAttribute("siteScans", scans.take(SHOWN_SITE_SCANS).map { scan -> scan.toRow() })
+        model.addAttribute("siteFindings", siteScanRecorder.findings(projectId).map { finding -> finding.toRow(latestSucceeded) })
+    }
+
+    private fun SiteScanSummary.toRow() = SiteScanRow(SITE_SCAN_STATUS_LABELS.getValue(status), startedAt, finishedAt, errorMessage)
+
+    private fun SiteFinding.toRow(latestSucceeded: SiteScanSummary?) = SiteFindingRow(
+        id = id!!,
+        badge = SITE_RISK_BADGES.getValue(risk),
+        riskLabel = risk.label,
+        name = name,
+        typeLabel = VulnerabilityType.ofCweIds(setOfNotNull(cweId)).takeIf { type -> type != VulnerabilityType.UNKNOWN }?.label,
+        description = description,
+        solution = solution,
+        references = reference.lines().filter { it.isNotBlank() },
+        sampleUrls = sampleUrls.lines().filter { it.isNotBlank() },
+        instanceCount = instanceCount,
+        status = status.name,
+        seenInLatestScan = latestSucceeded == null || !lastSeenAt.isBefore(latestSucceeded.startedAt),
+    )
 
     private fun matchesStatus(findingStatus: String, filter: String) = when (filter) {
         ALL -> true
@@ -239,6 +320,18 @@ class PageController(
         const val ALL = "all"
         const val OPEN = "open"
         const val BYTE_ORDER_MARK = "\uFEFF"
+        const val SHOWN_SITE_SCANS = 5
+        val SITE_SCAN_STATUS_LABELS = mapOf(
+            SiteScanStatus.RUNNING to "진행 중",
+            SiteScanStatus.SUCCEEDED to "성공",
+            SiteScanStatus.FAILED to "실패",
+        )
+        val SITE_RISK_BADGES = mapOf(
+            SiteRisk.HIGH to "sev-high",
+            SiteRisk.MEDIUM to "sev-moderate",
+            SiteRisk.LOW to "sev-low",
+            SiteRisk.INFORMATIONAL to "sev-unclassified",
+        )
         val OPEN_STATUS_NAMES = FindingStatus.OPEN.map { status -> status.name }.toSet()
     }
 }

@@ -95,6 +95,48 @@ class SiteScanRecorderTest : FakeExternalApiIntegrationTest() {
     }
 
     @Test
+    @DisplayName("해결함으로 바꾼 항목이 다시 나오면 새로 발견으로 되돌리고 이력을 남긴다")
+    fun resolved_finding_seen_again_is_reopened() {
+        val first = recorder.start(projectId)
+        recorder.succeed(first.id!!, "{}", listOf(alert("10038-1"), alert("10098-1")))
+        val rows = findingRows()
+        recorder.changeStatus(rows[0]["id"] as Long, FindingStatus.RESOLVED, projectId)
+        recorder.changeStatus(rows[1]["id"] as Long, FindingStatus.NOT_APPLICABLE, projectId)
+        rewindScans(60)
+
+        val second = recorder.start(projectId)
+        recorder.succeed(second.id!!, "{}", listOf(alert("10038-1"), alert("10098-1")))
+
+        assertThat(findingRows().map { it["status"] }).containsExactly("NEW", "NOT_APPLICABLE")
+        val history = jdbcTemplate.queryForList(
+            "select from_status, to_status from site_finding_status_history where site_finding_id = ? order by id", rows[0]["id"],
+        )
+        assertThat(history.map { row -> listOf(row["from_status"], row["to_status"]) })
+            .containsExactly(listOf("NEW", "RESOLVED"), listOf("RESOLVED", "NEW"))
+    }
+
+    @Test
+    @DisplayName("점검 결과를 저장하는 동안 사람이 해당 없음으로 바꾸면 그 상태를 새로 발견으로 덮어쓰지 않는다")
+    fun reopening_does_not_overwrite_a_concurrent_status_change() {
+        val first = recorder.start(projectId)
+        recorder.succeed(first.id!!, "{}", listOf(alert("10038-1")))
+        val findingId = findingRows().single()["id"] as Long
+        recorder.changeStatus(findingId, FindingStatus.RESOLVED, projectId)
+        rewindScans(60)
+        val second = recorder.start(projectId)
+
+        blockedWhileSiteFindingIsLocked(findingId, uncommitted = {
+            jdbcTemplate.update("update site_finding set status = 'NOT_APPLICABLE' where id = ?", findingId)
+        }) {
+            recorder.succeed(second.id!!, "{}", listOf(alert("10038-1")))
+        }
+
+        assertThat(findingRows().single()["status"]).isEqualTo("NOT_APPLICABLE")
+        val history = jdbcTemplate.queryForList("select to_status from site_finding_status_history where site_finding_id = ? order by id", String::class.java, findingId)
+        assertThat(history).containsExactly("RESOLVED")
+    }
+
+    @Test
     @DisplayName("이번 점검에서 나오지 않은 항목은 지우지 않는다")
     fun missing_alert_is_kept() {
         val first = recorder.start(projectId)
