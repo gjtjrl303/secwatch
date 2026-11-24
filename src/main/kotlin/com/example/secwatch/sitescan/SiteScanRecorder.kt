@@ -44,7 +44,7 @@ class SiteScanRecorder(
         // 이미 끝난 점검(오래돼서 실패로 정리된 것 포함)의 결과가 뒤늦게 오면 받지 않는다
         val scan = siteScanRepository.findForUpdate(scanId, SiteScanStatus.RUNNING) ?: return
         val now = LocalDateTime.now()
-        val existing = siteFindingRepository.findByProjectId(scan.project.id!!).associateBy { finding -> finding.alertRef }
+        val existing = siteFindingRepository.findByProjectIdForUpdate(scan.project.id!!).associateBy { finding -> finding.alertRef }
 
         alerts.distinctBy { alert -> alert.alertRef }.forEach { alert ->
             val finding = existing[alert.alertRef]

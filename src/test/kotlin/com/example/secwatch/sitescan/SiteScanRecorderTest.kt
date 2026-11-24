@@ -116,6 +116,27 @@ class SiteScanRecorderTest : FakeExternalApiIntegrationTest() {
     }
 
     @Test
+    @DisplayName("점검 결과를 저장하는 동안 사람이 해당 없음으로 바꾸면 그 상태를 새로 발견으로 덮어쓰지 않는다")
+    fun reopening_does_not_overwrite_a_concurrent_status_change() {
+        val first = recorder.start(projectId)
+        recorder.succeed(first.id!!, "{}", listOf(alert("10038-1")))
+        val findingId = findingRows().single()["id"] as Long
+        recorder.changeStatus(findingId, FindingStatus.RESOLVED, projectId)
+        rewindScans(60)
+        val second = recorder.start(projectId)
+
+        blockedWhileSiteFindingIsLocked(findingId, uncommitted = {
+            jdbcTemplate.update("update site_finding set status = 'NOT_APPLICABLE' where id = ?", findingId)
+        }) {
+            recorder.succeed(second.id!!, "{}", listOf(alert("10038-1")))
+        }
+
+        assertThat(findingRows().single()["status"]).isEqualTo("NOT_APPLICABLE")
+        val history = jdbcTemplate.queryForList("select to_status from site_finding_status_history where site_finding_id = ? order by id", String::class.java, findingId)
+        assertThat(history).containsExactly("RESOLVED")
+    }
+
+    @Test
     @DisplayName("이번 점검에서 나오지 않은 항목은 지우지 않는다")
     fun missing_alert_is_kept() {
         val first = recorder.start(projectId)
