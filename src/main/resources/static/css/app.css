@@ -100,9 +100,9 @@ select { padding: 6px 10px; }
 .tile .label { display: block; margin-bottom: 10px; color: var(--muted); font-size: 13px; }
 .tile .sub { display: block; margin-top: 8px; color: var(--muted); font-size: 13px; }
 .tile strong.mid { display: block; font-size: 17px; font-weight: 650; overflow-wrap: anywhere; }
-.tile-total { grid-area: total; background: var(--accent); color: var(--on-accent); border: 0; }
+.tile-total { grid-area: total; background: var(--accent); color: var(--on-accent); border: 0; container-type: inline-size; }
 .tile-total .label, .tile-total .sub { color: rgba(0, 0, 0, 0.6); }
-.tile-total .big { font-family: var(--font-num); font-size: 96px; font-weight: 700; line-height: 1; letter-spacing: -0.04em; }
+.tile-total .big { font-family: var(--font-num); font-size: 96px; font-size: min(96px, calc((100cqi - 28px) / (var(--digits, 3) * 0.65))); white-space: nowrap; font-weight: 700; line-height: 1; letter-spacing: -0.04em; }
 .tile-total .big small { margin-left: 4px; font-family: var(--font); font-size: 16px; font-weight: 500; letter-spacing: 0; color: rgba(0, 0, 0, 0.6); }
 .tile-sev { grid-area: sev; }
 .tile-top { grid-area: top; }
@@ -171,7 +171,6 @@ form.stack button { margin-top: 20px; }
     .side .brand { margin: 0 8px 0 0; }
     main { padding: 24px 16px 64px; }
     .overview { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "total total" "sev sev" "top site"; }
-    .tile-total .big { font-size: 64px; }
     .filters .count { margin-left: 0; }
 }
 @media (max-width: 520px) {

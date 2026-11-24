@@ -33,7 +33,7 @@
     <section class="overview" aria-label="요약">
         <div class="tile tile-total" th:attr="aria-label='열린 취약점 ' + ${openTotal} + '건'">
             <span class="label">열린 취약점</span>
-            <div class="big"><span th:text="${openTotal}"></span><small>건</small></div>
+            <div class="big" th:style="'--digits: ' + ${#strings.length('' + openTotal)}"><span th:text="${openTotal}"></span><small>건</small></div>
             <span class="sub" th:text="'전체 ' + ${totalAll} + '건'"></span>
         </div>
         <div class="tile tile-sev">
