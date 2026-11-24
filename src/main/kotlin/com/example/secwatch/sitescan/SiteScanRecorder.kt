@@ -86,6 +86,10 @@ class SiteScanRecorder(
             .sortedWith(compareBy<SiteFinding>({ finding -> finding.risk.ordinal }, { finding -> finding.id }))
 
     @Transactional(readOnly = true)
+    fun latestSucceeded(projectId: Long): SiteScanSummary? =
+        siteScanRepository.findFirstByProjectIdAndStatusOrderByStartedAtDesc(projectId, SiteScanStatus.SUCCEEDED)
+
+    @Transactional(readOnly = true)
     fun scans(projectId: Long): List<SiteScanSummary> = siteScanRepository.findTop20ByProjectIdOrderByStartedAtDesc(projectId)
 
     private companion object {

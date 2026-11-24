@@ -235,7 +235,7 @@ class PageController(
 
     private fun addSiteScan(model: Model, projectId: Long, domain: String, siteScanError: String?) {
         val scans = siteScanRecorder.scans(projectId)
-        val latestSucceeded = scans.firstOrNull { scan -> scan.status == SiteScanStatus.SUCCEEDED }
+        val latestSucceeded = siteScanRecorder.latestSucceeded(projectId)
 
         model.addAttribute("siteScanError", siteScanError)
         model.addAttribute("siteScanAllowed", siteScanTargets.isAllowed(domain))
