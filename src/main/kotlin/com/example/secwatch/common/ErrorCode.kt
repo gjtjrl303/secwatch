@@ -12,6 +12,8 @@ enum class ErrorCode(val status: HttpStatus, val code: Int, val message: String)
     INVALID_SEVERITY(HttpStatus.BAD_REQUEST, 40006, "올바르지 않은 위험도입니다."),
     INVALID_NAME(HttpStatus.BAD_REQUEST, 40007, "프로젝트 이름은 1자 이상 100자 이하로 입력해주세요."),
 
+    SCAN_TARGET_NOT_ALLOWED(HttpStatus.FORBIDDEN, 40301, "점검이 허용되지 않은 주소입니다. 설정의 허용 목록에 있는 주소만 점검할 수 있습니다."),
+
     NOT_FOUND_PROJECT(HttpStatus.NOT_FOUND, 40401, "프로젝트를 찾을 수 없습니다."),
     NOT_FOUND_FINDING(HttpStatus.NOT_FOUND, 40402, "발견 항목을 찾을 수 없습니다."),
     NOT_FOUND_SITE_FINDING(HttpStatus.NOT_FOUND, 40403, "사이트 발견 항목을 찾을 수 없습니다."),

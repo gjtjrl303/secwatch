@@ -12,9 +12,13 @@ abstract class FakeExternalApiIntegrationTest : DbIntegrationTest() {
     @Autowired
     lateinit var fakeNotifier: FakeNotifier
 
+    @Autowired
+    lateinit var fakeSiteScanner: FakeSiteScanner
+
     @BeforeEach
     fun resetFakes() {
         fakeVulnerabilitySource.reset()
         fakeNotifier.reset()
+        fakeSiteScanner.reset()
     }
 }

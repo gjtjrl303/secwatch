@@ -77,7 +77,7 @@ class SiteScanRecorder(
             .sortedWith(compareBy<SiteFinding>({ finding -> finding.risk.ordinal }, { finding -> finding.id }))
 
     @Transactional(readOnly = true)
-    fun scans(projectId: Long): List<SiteScan> = siteScanRepository.findByProjectIdOrderByStartedAtDesc(projectId)
+    fun scans(projectId: Long): List<SiteScanSummary> = siteScanRepository.findTop20ByProjectIdOrderByStartedAtDesc(projectId)
 
     private companion object {
         const val STALE_MESSAGE = "점검이 끝나지 않아 실패로 처리했습니다."
