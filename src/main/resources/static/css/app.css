@@ -48,6 +48,7 @@ h1 { margin: 0; font-size: 30px; font-weight: 700; letter-spacing: -0.02em; over
 h2 { margin: 48px 0 14px; font-size: 20px; letter-spacing: -0.01em; }
 .meta { margin: 8px 0 0; color: var(--muted); font-size: 14px; display: flex; gap: 6px 14px; flex-wrap: wrap; }
 .meta .domain { font-family: var(--font-mono); color: var(--text); font-size: 13px; overflow-wrap: anywhere; }
+.top > div { min-width: 0; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .jump { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 28px; }
 .jump a { padding: 6px 12px; border-radius: 99px; background: var(--panel); color: var(--muted); font-size: 13px; }
