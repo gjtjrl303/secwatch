@@ -48,7 +48,16 @@ class SiteScanRecorder(
 
         alerts.distinctBy { alert -> alert.alertRef }.forEach { alert ->
             val finding = existing[alert.alertRef]
-            if (finding == null) siteFindingRepository.save(SiteFinding(scan.project, alert, now)) else finding.seenAgain(alert, now)
+            if (finding == null) {
+                siteFindingRepository.save(SiteFinding(scan.project, alert, now))
+            } else {
+                finding.seenAgain(alert, now)
+                // 고쳤다고 표시한 문제가 다시 나왔으면 고쳐지지 않은 것이라 다시 연다. 해당 없음은 사람의 판단이라 그대로 둔다.
+                if (finding.status == FindingStatus.RESOLVED) {
+                    finding.changeStatus(FindingStatus.NEW)
+                    siteFindingStatusHistoryRepository.save(SiteFindingStatusHistory(finding, FindingStatus.RESOLVED, FindingStatus.NEW, now))
+                }
+            }
         }
         scan.succeed(rawJson, now)
     }
