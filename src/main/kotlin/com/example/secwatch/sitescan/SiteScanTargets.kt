@@ -12,11 +12,11 @@ class SiteScanTargets(@Value("\${secwatch.site-scan.allowed-hosts:}") allowedHos
 
     fun isAllowed(domain: String): Boolean = allowedHosts.isEmpty() || domain.substringBefore(':').lowercase() in allowedHosts
 
-    fun urlFor(domain: String): String {
+    fun urlFor(domain: String, path: String? = null): String {
         val host = domain.substringBefore(':').lowercase()
         if (!isAllowed(domain)) throw SecwatchException(ErrorCode.SCAN_TARGET_NOT_ALLOWED)
         val scheme = if (host in LOCAL_HOSTS) "http" else "https"
-        return "$scheme://$domain"
+        return "$scheme://$domain${path.orEmpty()}"
     }
 
     private companion object {

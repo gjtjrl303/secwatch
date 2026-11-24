@@ -1,5 +1,6 @@
 package com.example.secwatch.sitescan
 
+import com.example.secwatch.project.SiteCredentials
 import java.io.IOException
 import java.nio.file.FileVisitResult
 import java.nio.file.Files
@@ -8,6 +9,7 @@ import java.nio.file.SimpleFileVisitor
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.attribute.PosixFilePermissions
 import java.time.Duration
+import java.util.Base64
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import org.springframework.beans.factory.annotation.Value
@@ -22,7 +24,8 @@ class ZapDockerScanner(
     @Value("\${secwatch.site-scan.timeout:5m}") private val timeout: Duration,
 ) : SiteScanner {
 
-    override fun scan(targetUrl: String): String {
+    override fun scan(target: SiteScanTarget): String {
+        val targetUrl = target.url
         val localHost = localHostOf(targetUrl)
         // 컨테이너 안에서 localhost는 컨테이너 자신이라서, 이 컴퓨터를 가리키는 이름으로 바꿔 넘긴다
         val containerUrl = if (localHost == null) targetUrl else targetUrl.replaceFirst("://$localHost", "://$HOST_FROM_CONTAINER")
@@ -32,7 +35,7 @@ class ZapDockerScanner(
         try {
             val workDir = Files.createDirectory(privateDir.resolve("wrk"))
             Files.setPosixFilePermissions(workDir, PosixFilePermissions.fromString("rwxrwxrwx"))
-            Files.writeString(workDir.resolve(PLAN_FILE), plan(containerUrl))
+            Files.writeString(workDir.resolve(PLAN_FILE), plan(containerUrl, target.credentials))
             run(command(containerName, workDir), containerName, privateDir.resolve("zap.log"))
 
             val report = workDir.resolve(REPORT_FILE)
@@ -48,34 +51,62 @@ class ZapDockerScanner(
      * ZAP의 기본 점검 스크립트(zap-baseline.py)와 같은 순서와 같은 규칙이지만 두 가지가 다르다.
      * 스크립트는 페이지의 POST 폼을 제출하고, 시작할 때마다 설치된 규칙 전체를 갱신한다.
      */
-    private fun plan(containerUrl: String) = """
-        env:
-          contexts:
-          - name: secwatch
-            urls:
-            - '$containerUrl'
-          parameters:
-            failOnError: true
-            progressToStdout: false
-        jobs:
-        - type: passiveScan-config
-          parameters:
-            enableTags: false
-            maxAlertsPerRule: 10
-        - type: spider
-          parameters:
-            url: '$containerUrl'
-            maxDuration: $spiderMinutes
-            postForm: false
-        - type: passiveScan-wait
-          parameters:
-            maxDuration: 0
-        - type: report
-          parameters:
-            template: traditional-json
-            reportDir: /zap/wrk/
-            reportFile: $REPORT_FILE
-    """.trimIndent() + "\n"
+    private fun plan(startUrl: String, credentials: SiteCredentials?): String {
+        val origin = originOf(startUrl)
+        return """
+            |env:
+            |  contexts:
+            |  - name: secwatch
+            |    urls:
+            |    - ${quoted(origin)}
+            |  parameters:
+            |    failOnError: true
+            |    progressToStdout: false
+            |jobs:
+            |${credentials?.let { basicAuthJob(origin, it) }.orEmpty()}- type: passiveScan-config
+            |  parameters:
+            |    enableTags: false
+            |    maxAlertsPerRule: 10
+            |- type: spider
+            |  parameters:
+            |    url: ${quoted(startUrl)}
+            |    maxDuration: $spiderMinutes
+            |    postForm: false
+            |- type: passiveScan-wait
+            |  parameters:
+            |    maxDuration: 0
+            |- type: report
+            |  parameters:
+            |    template: traditional-json
+            |    reportDir: /zap/wrk/
+            |    reportFile: $REPORT_FILE
+        """.trimMargin() + "\n"
+    }
+
+    /** 이 사이트로 가는 요청에만 Authorization 헤더를 붙인다. 다른 사이트로 가는 요청에는 붙이지 않는다. */
+    private fun basicAuthJob(origin: String, credentials: SiteCredentials): String {
+        val token = Base64.getEncoder().encodeToString("${credentials.username}:${credentials.password}".toByteArray(Charsets.UTF_8))
+        return listOf(
+            "- type: replacer",
+            "  parameters:",
+            "    deleteAllRules: true",
+            "  rules:",
+            "  - description: basic-auth",
+            "    url: ${quoted("\\Q$origin\\E(?:[/?#].*)?")}",
+            "    matchType: req_header",
+            "    matchString: Authorization",
+            "    matchRegex: false",
+            "    replacementString: ${quoted("Basic $token")}",
+        ).joinToString("\n", postfix = "\n")
+    }
+
+    private fun originOf(url: String): String {
+        val scheme = url.substringBefore("://")
+        val authority = url.substringAfter("://").substringBefore('/').substringBefore('?').substringBefore('#')
+        return "$scheme://$authority"
+    }
+
+    private fun quoted(value: String) = "'" + value.replace("'", "''") + "'"
 
     private fun command(containerName: String, workDir: Path) = listOf(
         dockerCommand, "run", "--rm", "--name", containerName,

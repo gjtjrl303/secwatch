@@ -2,6 +2,7 @@ package com.example.secwatch.sitescan
 
 import com.example.secwatch.common.ErrorCode
 import com.example.secwatch.common.SecwatchException
+import com.example.secwatch.project.SiteCredentials
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -22,6 +23,22 @@ class SiteScanTargetsTest {
     @DisplayName("허용 목록에 있는 그 밖의 도메인은 https 주소로 만든다")
     fun other_hosts_use_https() {
         assertThat(targets("localhost", "dev.example.com").urlFor("dev.example.com")).isEqualTo("https://dev.example.com")
+    }
+
+    @Test
+    @DisplayName("시작 경로가 있으면 주소 뒤에 붙인다")
+    fun start_path_is_appended() {
+        assertThat(targets().urlFor("dev.example.com", "/sejong")).isEqualTo("https://dev.example.com/sejong")
+        assertThat(targets().urlFor("localhost:3000", "/app?x=1")).isEqualTo("http://localhost:3000/app?x=1")
+        assertThat(targets().urlFor("dev.example.com", null)).isEqualTo("https://dev.example.com")
+    }
+
+    @Test
+    @DisplayName("점검 대상을 문자열로 바꿔도 비밀번호는 나오지 않는다")
+    fun target_toString_hides_the_password() {
+        val target = SiteScanTarget("https://dev.example.com", SiteCredentials("user", "topsecret"))
+
+        assertThat(target.toString()).contains("https://dev.example.com").doesNotContain("topsecret")
     }
 
     @Test
