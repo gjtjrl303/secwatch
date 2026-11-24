@@ -70,7 +70,7 @@
             </th:block>
             <th:block th:if="${siteScanAllowed and !siteScanRunning and !siteScans.empty}">
                 <strong class="mid" th:text="'최근 점검 ' + ${siteScans[0].statusLabel}"></strong>
-                <span class="sub" th:text="${#temporals.format(siteScans[0].startedAt, 'yyyy-MM-dd HH:mm')} + ', 발견 항목 ' + ${siteFindings.size()} + '종'"></span>
+                <span class="sub" th:text="${#temporals.format(siteScans[0].startedAt, 'yyyy-MM-dd HH:mm')} + (${siteScans[0].succeeded} ? ', 최근 점검에서 발견 ' + ${latestSiteFindingCount} + '종' : '')"></span>
             </th:block>
         </a>
     </section>

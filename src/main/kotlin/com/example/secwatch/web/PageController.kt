@@ -66,7 +66,7 @@ data class FindingRow(
     val statusLabel: String,
 )
 
-data class SiteScanRow(val statusLabel: String, val startedAt: LocalDateTime, val finishedAt: LocalDateTime?, val errorMessage: String?)
+data class SiteScanRow(val statusLabel: String, val succeeded: Boolean, val startedAt: LocalDateTime, val finishedAt: LocalDateTime?, val errorMessage: String?)
 
 data class SiteFindingRow(
     val id: Long,
@@ -247,10 +247,13 @@ class PageController(
         model.addAttribute("siteScanAllowed", siteScanTargets.isAllowed(domain))
         model.addAttribute("siteScanRunning", siteScanRecorder.isRunning(projectId))
         model.addAttribute("siteScans", scans.take(SHOWN_SITE_SCANS).map { scan -> scan.toRow() })
-        model.addAttribute("siteFindings", siteScanRecorder.findings(projectId).map { finding -> finding.toRow(latestSucceeded) })
+        val findings = siteScanRecorder.findings(projectId).map { finding -> finding.toRow(latestSucceeded) }
+        model.addAttribute("siteFindings", findings)
+        model.addAttribute("latestSiteFindingCount", findings.count { finding -> finding.seenInLatestScan })
     }
 
-    private fun SiteScanSummary.toRow() = SiteScanRow(SITE_SCAN_STATUS_LABELS.getValue(status), startedAt, finishedAt, errorMessage)
+    private fun SiteScanSummary.toRow() =
+        SiteScanRow(SITE_SCAN_STATUS_LABELS.getValue(status), status == SiteScanStatus.SUCCEEDED, startedAt, finishedAt, errorMessage)
 
     private fun SiteFinding.toRow(latestSucceeded: SiteScanSummary?) = SiteFindingRow(
         id = id!!,

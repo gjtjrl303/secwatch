@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.model
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.view
@@ -218,6 +219,33 @@ class SiteScanPageTest : FakeExternalApiIntegrationTest() {
 
         assertThat(html).contains("Old Alert", "New Alert")
         assertThat(html.split("최근 점검에서는 나오지 않았습니다").size - 1).isEqualTo(1)
+    }
+
+    @Test
+    @DisplayName("요약 타일은 최근 점검에서 나온 항목만 센다")
+    fun summary_tile_counts_only_findings_from_the_latest_scan() {
+        scanAndWait(report("Old Alert", ref = "1-1"))
+        rewindScans(60)
+        jdbcTemplate.update("update site_finding set last_seen_at = date_sub(last_seen_at, interval 60 minute)")
+        scanAndWait(report("New Alert", ref = "2-1"))
+
+        page()
+            .andExpect(model().attribute("latestSiteFindingCount", 1))
+            .andExpect(content().string(containsString("최근 점검에서 발견 1종")))
+    }
+
+    @Test
+    @DisplayName("최근 점검이 실패하면 요약 타일에 발견 항목 수를 붙이지 않는다")
+    fun failed_latest_scan_has_no_count_on_the_tile() {
+        scanAndWait(report("Some Alert"))
+        rewindScans(60)
+        fakeSiteScanner.failure = SiteScanFailedException("점검이 제한 시간 안에 끝나지 않았습니다.")
+        requestScan().andExpect(status().is3xxRedirection)
+        awaitNoRunningScan()
+
+        page()
+            .andExpect(content().string(containsString("최근 점검 실패")))
+            .andExpect(content().string(not(containsString("최근 점검에서 발견"))))
     }
 
     @Test
