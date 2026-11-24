@@ -30,7 +30,9 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.multipart.MultipartFile
 import org.springframework.web.util.UriComponentsBuilder
 
-data class SeverityBadge(val severity: String, val text: String)
+data class SeverityBadge(val severity: String, val text: String, val count: Int)
+
+data class TopPackage(val name: String, val count: Int, val highestLabel: String)
 
 data class Option(val value: String, val label: String)
 
@@ -213,9 +215,10 @@ class PageController(
             "badges",
             Severity.entries.mapNotNull { candidate ->
                 open.count { row -> row.severity == candidate.name }.takeIf { total -> total > 0 }
-                    ?.let { total -> SeverityBadge(candidate.name, "${candidate.label} $total") }
+                    ?.let { total -> SeverityBadge(candidate.name, "${candidate.label} $total", total) }
             },
         )
+        model.addAttribute("topPackage", topPackageOf(open))
         model.addAttribute("filterSeverity", severity?.name ?: ALL)
         model.addAttribute("filterStatus", status)
         model.addAttribute("severityOptions", listOf(Option(ALL, "전체")) + Severity.entries.map { candidate -> Option(candidate.name, candidate.label) })
@@ -261,6 +264,14 @@ class PageController(
         seenInLatestScan = latestSucceeded == null || !lastSeenAt.isBefore(latestSucceeded.startedAt),
     )
 
+    private fun topPackageOf(open: List<FindingRow>): TopPackage? =
+        open.groupBy { row -> "${row.packageName}@${row.version}" }
+            .maxByOrNull { (_, rows) -> rows.size }
+            ?.let { (name, rows) ->
+                val highest = Severity.entries.first { severity -> rows.any { row -> row.severity == severity.name } }
+                TopPackage(name, rows.size, highest.label)
+            }
+
     private fun matchesStatus(findingStatus: String, filter: String) = when (filter) {
         ALL -> true
         OPEN -> findingStatus in OPEN_STATUS_NAMES
@@ -282,7 +293,7 @@ class PageController(
         domain = domain,
         counts = Severity.entries
             .filter { severity -> severity in countBySeverity }
-            .map { severity -> SeverityBadge(severity.name, "${severity.label} ${countBySeverity.getValue(severity)}") },
+            .map { severity -> countBySeverity.getValue(severity).toInt().let { total -> SeverityBadge(severity.name, "${severity.label} $total", total) } },
     )
 
     private fun Project.toDetailView() = ProjectDetailView(
