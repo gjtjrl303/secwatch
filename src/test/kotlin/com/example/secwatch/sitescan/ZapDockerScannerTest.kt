@@ -112,6 +112,50 @@ class ZapDockerScannerTest {
     }
 
     @Test
+    @DisplayName("인증 정보가 있으면 우리가 붙인 Basic 인증 헤더를 문제로 잡는 규칙(10105)을 끈다")
+    fun credentials_turn_off_the_captured_credentials_rule() {
+        scanner("$writeReport; exit 0").scan(target("https://dev.example.com", credentials))
+
+        val plan = Files.readString(planCopy)
+        assertThat(plan).contains("  rules:\n  - id: 10105\n    threshold: \"off\"\n")
+        assertThat(plan.indexOf("id: 10105")).isLessThan(plan.indexOf("type: spider"))
+    }
+
+    @Test
+    @DisplayName("인증 정보가 없으면 그 규칙을 끄지 않는다")
+    fun no_credentials_keep_the_captured_credentials_rule() {
+        scanner("$writeReport; exit 0").scan(target("https://dev.example.com"))
+
+        assertThat(Files.readString(planCopy)).doesNotContain("10105")
+    }
+
+    @Test
+    @DisplayName("결과에 아이디와 비밀번호, 인증 헤더 값이 남아 있으면 가리고 돌려준다")
+    fun credentials_left_in_the_report_are_masked() {
+        val password = "p<w>&\"x\\y"
+        val token = Base64.getEncoder().encodeToString("user:$password".toByteArray())
+        val htmlEscaped = "p&lt;w&gt;&amp;&quot;x\\y"
+        fun json(text: String) = text.replace("\\", "\\\\").replace("\"", "\\\"")
+        val report = Files.writeString(
+            tempDir.resolve("leaky.json"),
+            """{"site":[{"@name":"https://dev.example.com","alerts":[{"name":"n","otherinfo":"<p>revealing username [user] and password [${json(htmlEscaped)}].</p>","instances":[{"uri":"https://dev.example.com/a","evidence":"Authorization: Basic $token","otherinfo":"pair user:${json(password)} raw ${json(password)}"}]}]}]}""",
+        )
+
+        val result = scanner("cp \"$report\" \"\$dir/report.json\"; exit 0")
+            .scan(target("https://dev.example.com", SiteCredentials("user", password)))
+
+        assertThat(result).doesNotContain(token).doesNotContain(htmlEscaped).doesNotContain("p<w>").doesNotContain("p\\u003cw")
+        val parsed = com.fasterxml.jackson.databind.ObjectMapper().readTree(result)
+        val alert = parsed.path("site")[0].path("alerts")[0]
+        assertThat(alert.path("name").asText()).isEqualTo("n")
+        assertThat(alert.path("otherinfo").asText()).doesNotContain(htmlEscaped).contains("******")
+        val instance = alert.path("instances")[0]
+        assertThat(instance.path("uri").asText()).isEqualTo("https://dev.example.com/a")
+        assertThat(instance.path("evidence").asText()).isEqualTo("Authorization: Basic ******")
+        assertThat(instance.path("otherinfo").asText()).doesNotContain(password)
+    }
+
+    @Test
     @DisplayName("인증 정보는 docker 명령줄에 나오지 않는다")
     fun credentials_never_reach_the_command_line() {
         scanner("$writeReport; exit 0").scan(target("https://dev.example.com", credentials))

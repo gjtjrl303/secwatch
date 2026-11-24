@@ -1,6 +1,12 @@
 package com.example.secwatch.sitescan
 
 import com.example.secwatch.project.SiteCredentials
+import com.fasterxml.jackson.core.JsonProcessingException
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ArrayNode
+import com.fasterxml.jackson.databind.node.ObjectNode
+import com.fasterxml.jackson.databind.node.TextNode
 import java.io.IOException
 import java.nio.file.FileVisitResult
 import java.nio.file.Files
@@ -14,6 +20,7 @@ import java.util.UUID
 import java.util.concurrent.TimeUnit
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
+import org.springframework.web.util.HtmlUtils
 
 /** Docker로 ZAP을 띄워 사이트를 둘러보고 응답만 살펴본다. 공격 요청을 보내지 않고 POST 폼도 제출하지 않는다. */
 @Component
@@ -41,7 +48,8 @@ class ZapDockerScanner(
             val report = workDir.resolve(REPORT_FILE)
             if (!Files.isRegularFile(report)) throw SiteScanFailedException("ZAP이 결과 파일을 만들지 않았습니다.")
             val rawJson = Files.readString(report)
-            return if (localHost == null) rawJson else rawJson.replace(CONTAINER_HOST_IN_URL) { match -> match.groupValues[1] + localHost }
+            val restored = if (localHost == null) rawJson else rawJson.replace(CONTAINER_HOST_IN_URL) { match -> match.groupValues[1] + localHost }
+            return target.credentials?.let { credentials -> maskCredentials(restored, credentials) } ?: restored
         } finally {
             deleteWithoutFollowingLinks(privateDir)
         }
@@ -67,7 +75,7 @@ class ZapDockerScanner(
             |  parameters:
             |    enableTags: false
             |    maxAlertsPerRule: 10
-            |- type: spider
+            |${if (credentials != null) CAPTURED_CREDENTIALS_RULE_OFF else ""}- type: spider
             |  parameters:
             |    url: ${quoted(startUrl)}
             |    maxDuration: $spiderMinutes
@@ -98,6 +106,34 @@ class ZapDockerScanner(
             "    matchRegex: false",
             "    replacementString: ${quoted("Basic $token")}",
         ).joinToString("\n", postfix = "\n")
+    }
+
+    /** 결과를 DB에 저장하기 전에, 어느 규칙이 요청 내용을 옮겨 적었더라도 인증 정보가 남지 않게 값마다 가린다. */
+    private fun maskCredentials(rawJson: String, credentials: SiteCredentials): String {
+        val token = Base64.getEncoder().encodeToString("${credentials.username}:${credentials.password}".toByteArray(Charsets.UTF_8))
+        val secrets = listOf(token, "${credentials.username}:${credentials.password}", HtmlUtils.htmlEscape(credentials.password), credentials.password)
+            .distinct().sortedByDescending { secret -> secret.length }
+        val root = try {
+            REPORT_MAPPER.readTree(rawJson)
+        } catch (e: JsonProcessingException) {
+            throw SiteScanFailedException("ZAP 결과를 읽지 못했습니다.", e)
+        }
+        maskTextValues(root, secrets)
+        return REPORT_MAPPER.writeValueAsString(root)
+    }
+
+    private fun maskTextValues(node: JsonNode, secrets: List<String>) {
+        fun masked(text: String) = secrets.fold(text) { current, secret -> current.replace(secret, MASK) }
+        when (node) {
+            is ObjectNode -> node.fieldNames().asSequence().toList().forEach { name ->
+                val child = node.get(name)
+                if (child.isTextual) node.put(name, masked(child.asText())) else maskTextValues(child, secrets)
+            }
+            is ArrayNode -> (0 until node.size()).forEach { index ->
+                val child = node.get(index)
+                if (child.isTextual) node.set(index, TextNode(masked(child.asText()))) else maskTextValues(child, secrets)
+            }
+        }
     }
 
     private fun originOf(url: String): String {
@@ -185,6 +221,12 @@ class ZapDockerScanner(
         const val PLAN_FILE = "plan.yaml"
         const val REPORT_FILE = "report.json"
         const val CLEANUP_SECONDS = 10L
+        const val MASK = "******"
+
+        // 이 규칙은 Basic 인증 헤더를 보면 아이디와 비밀번호를 풀어서 결과에 적는다. 헤더는 우리가 붙인 것이라 끈다.
+        // YAML에서 따옴표 없는 off는 false로 읽혀서 따옴표를 붙인다.
+        const val CAPTURED_CREDENTIALS_RULE_OFF = "  rules:\n  - id: 10105\n    threshold: \"off\"\n"
+        val REPORT_MAPPER = ObjectMapper()
 
         // 기본 점검 스크립트가 함께 쓰는 규칙 묶음이다. 빼면 연습용 사이트에서 10종이던 항목이 3종으로 준다.
         const val BETA_PASSIVE_RULES = "pscanrulesBeta"
