@@ -4,32 +4,85 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title th:text="${project.name} + ' - secwatch'">secwatch</title>
-    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <th:block th:replace="~{fragments/side :: head}"></th:block>
 </head>
 <body>
+<div class="app">
+<nav th:replace="~{fragments/side :: side('detail')}"></nav>
 <main>
     <header class="top">
-        <h1 th:text="${project.name}"></h1>
-        <a th:href="@{/}">목록으로</a>
+        <div>
+            <p class="crumb"><a th:href="@{/}">프로젝트</a> / <span th:text="${project.name}"></span></p>
+            <h1 th:text="${project.name}"></h1>
+            <p class="meta">
+                <span class="domain" th:text="${project.domain}"></span>
+                <span th:text="${project.webhookConfigured} ? '디스코드 알림 설정됨' : '디스코드 알림 미설정'"></span>
+                <span>마지막 점검
+                    <span th:if="${project.lastCheckedAt != null}" th:text="${#temporals.format(project.lastCheckedAt, 'yyyy-MM-dd HH:mm')}"></span>
+                    <span th:if="${project.lastCheckedAt == null}">아직 없음</span></span>
+            </p>
+        </div>
+        <div class="actions">
+            <a class="button" th:href="@{/}">목록으로</a>
+            <a class="button primary" th:href="@{/projects/{id}(id=${project.id},tab='settings')}">파일 다시 올리기</a>
+        </div>
     </header>
-    <p><span th:text="${project.domain}"></span>
-        <span class="muted" th:text="${project.webhookConfigured} ? '(디스코드 알림 설정됨)' : '(디스코드 알림 미설정)'"></span></p>
-    <p class="muted">마지막 점검:
-        <span th:if="${project.lastCheckedAt != null}" th:text="${#temporals.format(project.lastCheckedAt, 'yyyy-MM-dd HH:mm')}"></span>
-        <span th:if="${project.lastCheckedAt == null}">아직 없음</span></p>
     <p th:if="${project.lastCheckError}" class="error" th:text="${project.lastCheckError}"></p>
     <p th:if="${project.lastNotifyError}" class="error" th:text="${project.lastNotifyError}"></p>
 
-    <section class="summary">
-        <p class="summary-title" th:text="'열린 취약점 ' + ${openTotal} + '건'"></p>
-        <p class="muted" th:text="'전체 ' + ${totalAll} + '건'"></p>
-        <p>
-            <span th:each="b : ${badges}" th:class="'badge big sev-' + ${#strings.toLowerCase(b.severity)}" th:text="${b.text}"></span>
-            <span th:if="${badges.empty}" class="muted">열린 취약점이 없습니다.</span>
-        </p>
+    <section class="overview" aria-label="요약">
+        <div class="tile tile-total" th:attr="aria-label='열린 취약점 ' + ${openTotal} + '건'">
+            <span class="label">열린 취약점</span>
+            <div class="big" th:style="'--digits: ' + ${#strings.length('' + openTotal)}"><span th:text="${openTotal}"></span><small>건</small></div>
+            <span class="sub" th:text="'전체 ' + ${totalAll} + '건'"></span>
+        </div>
+        <div class="tile tile-sev">
+            <span class="label">위험도</span>
+            <div class="bar" aria-hidden="true" th:unless="${badges.empty}">
+                <i th:each="b : ${badges}" th:class="'sev-' + ${#strings.toLowerCase(b.severity)}" th:style="'flex-grow: ' + ${b.count}"></i>
+            </div>
+            <div class="badges">
+                <span th:each="b : ${badges}" th:class="'badge big sev-' + ${#strings.toLowerCase(b.severity)}" th:text="${b.text}"></span>
+                <span th:if="${badges.empty}" class="muted">열린 취약점이 없습니다.</span>
+            </div>
+        </div>
+        <div class="tile tile-top">
+            <span class="label">가장 많이 걸린 라이브러리</span>
+            <th:block th:if="${topPackage}">
+                <strong class="mid" th:text="${topPackage.name}"></strong>
+                <span class="sub" th:text="'열린 항목 ' + ${topPackage.count} + '건, 가장 높은 위험도 ' + ${topPackage.highestLabel}"></span>
+            </th:block>
+            <span th:unless="${topPackage}" class="sub">열린 항목이 없습니다.</span>
+        </div>
+        <a class="tile tile-site" th:href="@{/projects/{id}(id=${project.id},tab='site')}">
+            <span class="label">사이트 점검</span>
+            <th:block th:if="${!siteScanAllowed}">
+                <strong class="mid">허용 목록 밖</strong>
+                <span class="sub">허용 주소 설정에 넣어야 점검할 수 있습니다.</span>
+            </th:block>
+            <th:block th:if="${siteScanAllowed and siteScanRunning}">
+                <strong class="mid">진행 중</strong>
+                <span class="sub">1분쯤 뒤에 새로고침합니다.</span>
+            </th:block>
+            <th:block th:if="${siteScanAllowed and !siteScanRunning and siteScans.empty}">
+                <strong class="mid">아직 점검 전</strong>
+                <span class="sub">아래에서 점검을 실행합니다.</span>
+            </th:block>
+            <th:block th:if="${siteScanAllowed and !siteScanRunning and !siteScans.empty}">
+                <strong class="mid" th:text="'최근 점검 ' + ${siteScans[0].statusLabel}"></strong>
+                <span class="sub" th:text="${#temporals.format(siteScans[0].startedAt, 'yyyy-MM-dd HH:mm')} + (${siteScans[0].succeeded} ? ', 최근 점검에서 발견 ' + ${latestSiteFindingCount} + '종' : '')"></span>
+            </th:block>
+        </a>
     </section>
 
-    <h2>취약점</h2>
+    <nav class="tabs" aria-label="상세 화면 탭">
+        <a th:aria-current="${tab == 'libraries'} ? 'page'" th:href="@{/projects/{id}(id=${project.id})}">라이브러리 취약점 <span class="n" th:text="${openTotal}"></span></a>
+        <a th:aria-current="${tab == 'site'} ? 'page'" th:href="@{/projects/{id}(id=${project.id},tab='site')}">사이트 점검 <span class="n" th:text="${siteFindings.size()}"></span></a>
+        <a th:aria-current="${tab == 'settings'} ? 'page'" th:href="@{/projects/{id}(id=${project.id},tab='settings')}">설정</a>
+    </nav>
+
+    <section th:if="${tab == 'libraries'}" aria-labelledby="findings">
+    <h2 id="findings">라이브러리 취약점</h2>
     <details class="guide">
         <summary>위험도 기준</summary>
         <ul>
@@ -52,7 +105,7 @@
             </select>
         </label>
         <noscript><button type="submit">적용</button></noscript>
-        <span class="muted" th:text="${shownTotal} + '건 표시'"></span>
+        <span class="count" th:text="${shownTotal} + '건 표시'"></span>
     </form>
 
     <p th:if="${groups.empty and totalAll == 0}" class="muted">발견된 취약점이 없습니다.</p>
@@ -101,16 +154,22 @@
         </details>
     </section>
 
+    </section>
+
+    <section th:if="${tab == 'site'}" aria-labelledby="site-scan">
     <h2 id="site-scan">사이트 점검</h2>
     <p class="muted">ZAP으로 사이트를 둘러보며 응답을 살펴봅니다. 공격 요청은 보내지 않고 POST 폼은 제출하지 않습니다. SQL 주입처럼 값을 넣어 봐야 드러나는 문제는 찾지 못합니다.</p>
     <p th:if="${siteScanError}" class="error" th:text="${siteScanError}"></p>
-    <p th:unless="${siteScanAllowed}" class="muted">이 프로젝트의 도메인은 점검 허용 목록에 없어서 점검할 수 없습니다.</p>
-    <form th:if="${siteScanAllowed}" method="post" th:action="@{/projects/{id}/site-scans(id=${project.id})}">
-        <button type="submit" th:disabled="${siteScanRunning}">사이트 점검 실행</button>
-    </form>
-    <p th:if="${siteScanRunning}" class="muted">점검이 진행 중입니다. 1분쯤 뒤에 새로고침해 주세요.</p>
-    <p th:if="${siteScans.empty}" class="muted">아직 사이트 점검을 하지 않았습니다.</p>
-    <div class="table-scroll" th:unless="${siteScans.empty}">
+    <div class="panel scan-box">
+        <p th:unless="${siteScanAllowed}" class="muted">이 프로젝트의 도메인은 점검 허용 목록에 없어서 점검할 수 없습니다.</p>
+        <p th:if="${siteScanAllowed and siteScanRunning}" class="muted">점검이 진행 중입니다. 1분쯤 뒤에 새로고침해 주세요.</p>
+        <p th:if="${!siteScanRunning and siteScans.empty}" class="muted">아직 사이트 점검을 하지 않았습니다.</p>
+        <form th:if="${siteScanAllowed}" method="post" th:action="@{/projects/{id}/site-scans(id=${project.id})}">
+            <button class="primary" type="submit" th:disabled="${siteScanRunning}">사이트 점검 실행</button>
+        </form>
+    </div>
+    <h3 th:unless="${siteScans.empty}">점검 기록</h3>
+    <div class="table-scroll tbl" th:unless="${siteScans.empty}">
         <table>
             <thead><tr><th>시작</th><th>결과</th><th>끝</th><th>실패 이유</th></tr></thead>
             <tbody>
@@ -124,7 +183,8 @@
         </table>
     </div>
     <p th:if="${!siteScans.empty and siteFindings.empty}" class="muted">사이트 점검에서 발견된 항목이 없습니다.</p>
-    <div class="table-scroll" th:unless="${siteFindings.empty}">
+    <h3 th:unless="${siteFindings.empty}">발견 항목</h3>
+    <div class="table-scroll tbl" th:unless="${siteFindings.empty}">
         <table>
             <thead><tr><th>위험도</th><th>내용</th><th>고치는 방법</th><th>상태</th></tr></thead>
             <tbody>
@@ -165,9 +225,12 @@
         </table>
     </div>
 
-    <h2>의존성 다시 가져오기</h2>
+    </section>
+
+    <section th:if="${tab == 'settings'}" aria-labelledby="reimport">
+    <h2 id="reimport">의존성 다시 가져오기</h2>
     <p th:if="${importError}" class="error" th:text="${importError}"></p>
-    <form method="post" enctype="multipart/form-data" th:action="@{/projects/{id}/dependencies(id=${project.id})}">
+    <form class="panel stack" method="post" enctype="multipart/form-data" th:action="@{/projects/{id}/dependencies(id=${project.id})}">
         <p>아래 중 하나를 파일로 올리거나 내용을 붙여넣습니다. 형식은 자동으로 알아냅니다.</p>
         <ul class="muted">
             <li>Node: <code>package-lock.json</code> 파일</li>
@@ -181,17 +244,19 @@
         <textarea id="lockfile" name="lockfile"></textarea>
         <p class="muted">파일과 붙여넣은 내용이 둘 다 있으면 파일을 씁니다.</p>
         <p class="muted">버전이 바뀌거나 빠진 라이브러리의 이전 항목과 상태 이력은 함께 지워집니다.</p>
-        <button type="submit">다시 가져오기</button>
+        <button class="primary" type="submit">다시 가져오기</button>
     </form>
 
-    <h2>디스코드 알림</h2>
+    <h2 id="notification">디스코드 알림</h2>
     <p th:if="${webhookError}" class="error" th:text="${webhookError}"></p>
-    <form method="post" th:action="@{/projects/{id}/notification(id=${project.id})}">
+    <form class="panel stack" method="post" th:action="@{/projects/{id}/notification(id=${project.id})}">
         <label for="webhookUrl">웹훅 주소</label>
         <input type="password" id="webhookUrl" name="webhookUrl" autocomplete="off" required placeholder="https://discord.com/api/webhooks/...">
         <p class="muted">웹훅 주소는 비밀값이라 저장한 뒤에는 화면에 다시 보여주지 않습니다. 새 주소를 넣으면 바뀝니다.</p>
-        <button type="submit">저장</button>
+        <button class="primary" type="submit">저장</button>
     </form>
+    </section>
 </main>
+</div>
 </body>
 </html>

@@ -4,13 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>오류 - secwatch</title>
-    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <th:block th:replace="~{fragments/side :: head}"></th:block>
 </head>
 <body>
+<div class="app">
+<nav th:replace="~{fragments/side :: side('error')}"></nav>
 <main>
-    <h1>문제가 생겼습니다</h1>
-    <p class="error" th:text="${#strings.isEmpty(message)} ? '요청을 처리하지 못했습니다.' : ${message}"></p>
-    <a th:href="@{/}">목록으로</a>
+    <div class="panel">
+        <h1>문제가 생겼습니다</h1>
+        <p class="error" th:text="${#strings.isEmpty(message)} ? '요청을 처리하지 못했습니다.' : ${message}"></p>
+        <a class="button" th:href="@{/}">목록으로</a>
+    </div>
 </main>
+</div>
 </body>
 </html>

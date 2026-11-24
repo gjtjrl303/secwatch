@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.model
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.view
@@ -42,7 +43,7 @@ class SiteScanPageTest : FakeExternalApiIntegrationTest() {
     private fun report(name: String, ref: String = "1-1", cwe: String = "693") =
         """{"site":[{"@name":"http://localhost:3000","alerts":[{"pluginid":"1","alertRef":"$ref","name":"$name","riskcode":"2","desc":"<p>설명</p>","solution":"<p>고치는 방법</p>","reference":"<p>https://example.com/ref</p>","cweid":"$cwe","instances":[{"uri":"http://localhost:3000/a"}]}]}]}"""
 
-    private fun page(id: Long = projectId) = mockMvc.perform(get("/projects/$id"))
+    private fun page(id: Long = projectId) = mockMvc.perform(get("/projects/$id?tab=site"))
 
     private fun requestScan(id: Long = projectId) = mockMvc.perform(post("/projects/$id/site-scans"))
 
@@ -79,11 +80,11 @@ class SiteScanPageTest : FakeExternalApiIntegrationTest() {
     }
 
     @Test
-    @DisplayName("점검을 요청하면 상세 화면의 사이트 점검 자리로 돌아오고, 끝나면 발견 항목이 위험도와 함께 나온다")
+    @DisplayName("점검을 요청하면 사이트 점검 탭으로 돌아오고, 끝나면 발견 항목이 위험도와 함께 나온다")
     fun request_then_findings_are_listed() {
         fakeSiteScanner.result = fixture()
 
-        requestScan().andExpect(status().is3xxRedirection).andExpect(redirectedUrl("/projects/$projectId#site-scan"))
+        requestScan().andExpect(status().is3xxRedirection).andExpect(redirectedUrl("/projects/$projectId?tab=site#site-scan"))
         awaitNoRunningScan()
 
         val html = page().andReturn().response.contentAsString
@@ -186,7 +187,7 @@ class SiteScanPageTest : FakeExternalApiIntegrationTest() {
 
         mockMvc.perform(post("/projects/$projectId/site-findings/$findingId/status").param("status", "NOT_APPLICABLE"))
             .andExpect(status().is3xxRedirection)
-            .andExpect(redirectedUrl("/projects/$projectId#sf$findingId"))
+            .andExpect(redirectedUrl("/projects/$projectId?tab=site#sf$findingId"))
 
         assertThat(jdbcTemplate.queryForObject("select status from site_finding where id = ?", String::class.java, findingId)).isEqualTo("NOT_APPLICABLE")
         page().andExpect(content().string(containsString("id=\"sf$findingId\"")))
@@ -218,6 +219,33 @@ class SiteScanPageTest : FakeExternalApiIntegrationTest() {
 
         assertThat(html).contains("Old Alert", "New Alert")
         assertThat(html.split("최근 점검에서는 나오지 않았습니다").size - 1).isEqualTo(1)
+    }
+
+    @Test
+    @DisplayName("요약 타일은 최근 점검에서 나온 항목만 센다")
+    fun summary_tile_counts_only_findings_from_the_latest_scan() {
+        scanAndWait(report("Old Alert", ref = "1-1"))
+        rewindScans(60)
+        jdbcTemplate.update("update site_finding set last_seen_at = date_sub(last_seen_at, interval 60 minute)")
+        scanAndWait(report("New Alert", ref = "2-1"))
+
+        page()
+            .andExpect(model().attribute("latestSiteFindingCount", 1))
+            .andExpect(content().string(containsString("최근 점검에서 발견 1종")))
+    }
+
+    @Test
+    @DisplayName("최근 점검이 실패하면 요약 타일에 발견 항목 수를 붙이지 않는다")
+    fun failed_latest_scan_has_no_count_on_the_tile() {
+        scanAndWait(report("Some Alert"))
+        rewindScans(60)
+        fakeSiteScanner.failure = SiteScanFailedException("점검이 제한 시간 안에 끝나지 않았습니다.")
+        requestScan().andExpect(status().is3xxRedirection)
+        awaitNoRunningScan()
+
+        page()
+            .andExpect(content().string(containsString("최근 점검 실패")))
+            .andExpect(content().string(not(containsString("최근 점검에서 발견"))))
     }
 
     @Test

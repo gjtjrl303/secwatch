@@ -13,6 +13,7 @@ import java.time.LocalDateTime
 import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers.containsString
 import org.hamcrest.Matchers.not
+import org.hamcrest.Matchers.nullValue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -24,6 +25,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.model
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.view
@@ -98,6 +100,95 @@ class ProjectDetailPageTest : FakeExternalApiIntegrationTest() {
             .andExpect(content().string(containsString("열린 취약점 2건")))
             .andExpect(content().string(containsString("치명 1")))
             .andExpect(content().string(containsString("높음 1")))
+    }
+
+    @Test
+    @DisplayName("위 요약에 열린 항목이 가장 많은 라이브러리를 보여준다")
+    fun summary_shows_the_library_with_the_most_open_findings() {
+        saveFinding("GHSA-A1", Severity.LOW, packageName = "aaa")
+        saveFinding("GHSA-B1", Severity.HIGH, packageName = "bbb")
+        saveFinding("GHSA-B2", Severity.LOW, packageName = "bbb")
+        saveFinding("GHSA-A2", Severity.LOW, FindingStatus.RESOLVED, packageName = "aaa")
+        saveFinding("GHSA-A3", Severity.LOW, FindingStatus.RESOLVED, packageName = "aaa")
+
+        page()
+            .andExpect(model().attribute("topPackage", TopPackage("bbb@4.17.20", 2, "높음")))
+            .andExpect(content().string(containsString("열린 항목 2건")))
+    }
+
+    @Test
+    @DisplayName("열린 항목이 없으면 가장 많은 라이브러리를 보여주지 않는다")
+    fun summary_has_no_top_library_without_open_findings() {
+        saveFinding("GHSA-A1", Severity.LOW, FindingStatus.RESOLVED, packageName = "aaa")
+
+        page().andExpect(model().attribute("topPackage", nullValue()))
+    }
+
+    @Test
+    @DisplayName("위험도 막대는 열린 항목 수만큼 칸을 나눈다")
+    fun severity_bar_uses_open_counts() {
+        saveFinding("GHSA-H1", Severity.HIGH)
+        saveFinding("GHSA-H2", Severity.HIGH)
+        saveFinding("GHSA-L1", Severity.LOW)
+
+        page()
+            .andExpect(content().string(containsString("flex-grow: 2")))
+            .andExpect(content().string(containsString("flex-grow: 1")))
+    }
+
+    @Test
+    @DisplayName("탭을 고르지 않으면 라이브러리 취약점 탭만 보인다")
+    fun default_tab_is_libraries() {
+        saveFinding("GHSA-LIB-ONE")
+
+        page()
+            .andExpect(model().attribute("tab", "libraries"))
+            .andExpect(content().string(containsString("GHSA-LIB-ONE")))
+            .andExpect(content().string(not(containsString("action=\"/projects/${project.id}/dependencies\""))))
+            .andExpect(content().string(not(containsString("POST 폼은 제출하지 않습니다"))))
+    }
+
+    @Test
+    @DisplayName("사이트 점검 탭은 사이트 점검만 보여준다")
+    fun site_tab_shows_only_the_site_scan() {
+        saveFinding("GHSA-LIB-ONE")
+
+        page("/projects/${project.id}?tab=site")
+            .andExpect(model().attribute("tab", "site"))
+            .andExpect(content().string(containsString("POST 폼은 제출하지 않습니다")))
+            .andExpect(content().string(not(containsString("GHSA-LIB-ONE"))))
+    }
+
+    @Test
+    @DisplayName("설정 탭은 다시 가져오기와 디스코드 알림 폼을 보여준다")
+    fun settings_tab_shows_the_forms() {
+        saveFinding("GHSA-LIB-ONE")
+
+        page("/projects/${project.id}?tab=settings")
+            .andExpect(content().string(containsString("action=\"/projects/${project.id}/dependencies\"")))
+            .andExpect(content().string(containsString("action=\"/projects/${project.id}/notification\"")))
+            .andExpect(content().string(not(containsString("GHSA-LIB-ONE"))))
+    }
+
+    @Test
+    @DisplayName("모르는 탭 이름은 라이브러리 취약점 탭으로 본다")
+    fun unknown_tab_falls_back_to_libraries() {
+        page("/projects/${project.id}?tab=nope").andExpect(model().attribute("tab", "libraries"))
+    }
+
+    @Test
+    @DisplayName("지금 보고 있는 탭에 표시가 붙는다")
+    fun current_tab_is_marked() {
+        val html = page("/projects/${project.id}?tab=site").andReturn().response.contentAsString
+
+        assertThat(html).contains("aria-current=\"page\" href=\"/projects/${project.id}?tab=site\"")
+    }
+
+    @Test
+    @DisplayName("다시 가져오기에 실패하면 설정 탭에 오류를 보여준다")
+    fun reimport_error_is_shown_on_the_settings_tab() {
+        mockMvc.perform(post("/projects/${project.id}/dependencies").param("lockfile", "   "))
+            .andExpect(model().attribute("tab", "settings"))
     }
 
     @Test
@@ -254,7 +345,7 @@ class ProjectDetailPageTest : FakeExternalApiIntegrationTest() {
             .andExpect(status().isOk)
             .andExpect(view().name("project-detail"))
             .andExpect(content().string(containsString("지원하지 않는 형식입니다. package-lock.json, Gradle dependencies 출력, CycloneDX SBOM 중 하나를 넣어 주세요.")))
-            .andExpect(content().string(containsString("GHSA-1")))
+        page().andExpect(content().string(containsString("GHSA-1")))
 
         val names = jdbcTemplate.queryForList("select name from dependency where project_id = ?", String::class.java, project.id)
         assertThat(names).containsExactly("lodash")
@@ -337,7 +428,7 @@ class ProjectDetailPageTest : FakeExternalApiIntegrationTest() {
     @Test
     @DisplayName("다시 가져오기 폼이 세 가지 형식과 파일 올리기를 안내한다")
     fun reimport_form_explains_the_three_formats() {
-        page()
+        page("/projects/${project.id}?tab=settings")
             .andExpect(content().string(containsString("package-lock.json")))
             .andExpect(content().string(containsString("./gradlew dependencies")))
             .andExpect(content().string(containsString("CycloneDX SBOM")))
@@ -350,15 +441,15 @@ class ProjectDetailPageTest : FakeExternalApiIntegrationTest() {
     @Test
     @DisplayName("다시 가져오기 폼 아래에 이전 항목이 지워진다는 안내가 있다")
     fun reimport_form_warns_that_old_findings_are_removed() {
-        page().andExpect(content().string(containsString("이전 항목과 상태 이력은 함께 지워집니다")))
+        page("/projects/${project.id}?tab=settings").andExpect(content().string(containsString("이전 항목과 상태 이력은 함께 지워집니다")))
     }
 
     @Test
-    @DisplayName("웹훅을 저장하면 설정됨으로 바뀌고 주소는 화면에 나오지 않는다")
+    @DisplayName("웹훅을 저장하면 설정 탭으로 돌아오고, 설정됨으로 바뀌며 주소는 화면에 나오지 않는다")
     fun saving_the_webhook_marks_it_configured_without_showing_it() {
         mockMvc.perform(post("/projects/${project.id}/notification").param("webhookUrl", webhook))
             .andExpect(status().is3xxRedirection)
-            .andExpect(redirectedUrl("/projects/${project.id}"))
+            .andExpect(redirectedUrl("/projects/${project.id}?tab=settings"))
 
         assertThat(jdbcTemplate.queryForObject("select webhook_url from project where id = ?", String::class.java, project.id)).isEqualTo(webhook)
         page()

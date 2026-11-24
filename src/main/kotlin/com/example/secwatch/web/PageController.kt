@@ -30,7 +30,9 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.multipart.MultipartFile
 import org.springframework.web.util.UriComponentsBuilder
 
-data class SeverityBadge(val severity: String, val text: String)
+data class SeverityBadge(val severity: String, val text: String, val count: Int)
+
+data class TopPackage(val name: String, val count: Int, val highestLabel: String)
 
 data class Option(val value: String, val label: String)
 
@@ -64,7 +66,7 @@ data class FindingRow(
     val statusLabel: String,
 )
 
-data class SiteScanRow(val statusLabel: String, val startedAt: LocalDateTime, val finishedAt: LocalDateTime?, val errorMessage: String?)
+data class SiteScanRow(val statusLabel: String, val succeeded: Boolean, val startedAt: LocalDateTime, val finishedAt: LocalDateTime?, val errorMessage: String?)
 
 data class SiteFindingRow(
     val id: Long,
@@ -126,8 +128,9 @@ class PageController(
         @PathVariable id: Long,
         @RequestParam(required = false) severity: String?,
         @RequestParam(required = false) status: String?,
+        @RequestParam(required = false) tab: String?,
         model: Model,
-    ): String = renderDetail(id, model, null, null, parseSeverityFilter(severity), normalizeStatusFilter(status))
+    ): String = renderDetail(id, model, null, null, parseSeverityFilter(severity), normalizeStatusFilter(status), tab = normalizeTab(tab))
 
     @PostMapping("/projects/{id}/dependencies")
     fun reimport(
@@ -139,16 +142,16 @@ class PageController(
         dependencyImporter.import(id, dependencyContent(file, lockfile))
         "redirect:/projects/$id"
     } catch (e: SecwatchException) {
-        renderDetail(id, model, e.message, null, null, ALL)
+        renderDetail(id, model, e.message, null, null, ALL, tab = TAB_SETTINGS)
     }
 
     /** 실패해서 다시 그릴 때 입력한 웹훅 주소는 되돌려 담지 않는다. */
     @PostMapping("/projects/{id}/notification")
     fun changeWebhook(@PathVariable id: Long, @RequestParam(defaultValue = "") webhookUrl: String, model: Model): String = try {
         projectManagement.changeWebhook(id, webhookUrl)
-        "redirect:/projects/$id"
+        "redirect:/projects/$id?tab=$TAB_SETTINGS"
     } catch (e: SecwatchException) {
-        renderDetail(id, model, null, e.message, null, ALL)
+        renderDetail(id, model, null, e.message, null, ALL, tab = TAB_SETTINGS)
     }
 
     @PostMapping("/projects/{id}/findings/{findingId}/status")
@@ -172,9 +175,9 @@ class PageController(
     @PostMapping("/projects/{id}/site-scans")
     fun requestSiteScan(@PathVariable id: Long, model: Model): String = try {
         siteScanRunner.request(id)
-        "redirect:/projects/$id#site-scan"
+        "redirect:/projects/$id?tab=$TAB_SITE#site-scan"
     } catch (e: SecwatchException) {
-        renderDetail(id, model, null, null, null, ALL, e.message)
+        renderDetail(id, model, null, null, null, ALL, e.message, TAB_SITE)
     }
 
     @PostMapping("/projects/{id}/site-findings/{findingId}/status")
@@ -182,7 +185,7 @@ class PageController(
         val target = FindingStatus.entries.firstOrNull { candidate -> candidate.name == status.uppercase() }
             ?: throw SecwatchException(ErrorCode.INVALID_STATUS)
         siteScanRecorder.changeStatus(findingId, target, id)
-        return "redirect:/projects/$id#sf$findingId"
+        return "redirect:/projects/$id?tab=$TAB_SITE#sf$findingId"
     }
 
     private fun renderDetail(
@@ -193,8 +196,10 @@ class PageController(
         severity: Severity?,
         status: String,
         siteScanError: String? = null,
+        tab: String = TAB_LIBRARIES,
     ): String {
         val project = projectManagement.get(id)
+        model.addAttribute("tab", tab)
         addSiteScan(model, id, project.domain, siteScanError)
         val all = findingService.list(id, null, null).map { finding -> finding.toRow() }
         val open = all.filter { row -> row.status in OPEN_STATUS_NAMES }
@@ -213,9 +218,10 @@ class PageController(
             "badges",
             Severity.entries.mapNotNull { candidate ->
                 open.count { row -> row.severity == candidate.name }.takeIf { total -> total > 0 }
-                    ?.let { total -> SeverityBadge(candidate.name, "${candidate.label} $total") }
+                    ?.let { total -> SeverityBadge(candidate.name, "${candidate.label} $total", total) }
             },
         )
+        model.addAttribute("topPackage", topPackageOf(open))
         model.addAttribute("filterSeverity", severity?.name ?: ALL)
         model.addAttribute("filterStatus", status)
         model.addAttribute("severityOptions", listOf(Option(ALL, "전체")) + Severity.entries.map { candidate -> Option(candidate.name, candidate.label) })
@@ -241,10 +247,13 @@ class PageController(
         model.addAttribute("siteScanAllowed", siteScanTargets.isAllowed(domain))
         model.addAttribute("siteScanRunning", siteScanRecorder.isRunning(projectId))
         model.addAttribute("siteScans", scans.take(SHOWN_SITE_SCANS).map { scan -> scan.toRow() })
-        model.addAttribute("siteFindings", siteScanRecorder.findings(projectId).map { finding -> finding.toRow(latestSucceeded) })
+        val findings = siteScanRecorder.findings(projectId).map { finding -> finding.toRow(latestSucceeded) }
+        model.addAttribute("siteFindings", findings)
+        model.addAttribute("latestSiteFindingCount", findings.count { finding -> finding.seenInLatestScan })
     }
 
-    private fun SiteScanSummary.toRow() = SiteScanRow(SITE_SCAN_STATUS_LABELS.getValue(status), startedAt, finishedAt, errorMessage)
+    private fun SiteScanSummary.toRow() =
+        SiteScanRow(SITE_SCAN_STATUS_LABELS.getValue(status), status == SiteScanStatus.SUCCEEDED, startedAt, finishedAt, errorMessage)
 
     private fun SiteFinding.toRow(latestSucceeded: SiteScanSummary?) = SiteFindingRow(
         id = id!!,
@@ -261,11 +270,21 @@ class PageController(
         seenInLatestScan = latestSucceeded == null || !lastSeenAt.isBefore(latestSucceeded.startedAt),
     )
 
+    private fun topPackageOf(open: List<FindingRow>): TopPackage? =
+        open.groupBy { row -> "${row.packageName}@${row.version}" }
+            .maxByOrNull { (_, rows) -> rows.size }
+            ?.let { (name, rows) ->
+                val highest = Severity.entries.first { severity -> rows.any { row -> row.severity == severity.name } }
+                TopPackage(name, rows.size, highest.label)
+            }
+
     private fun matchesStatus(findingStatus: String, filter: String) = when (filter) {
         ALL -> true
         OPEN -> findingStatus in OPEN_STATUS_NAMES
         else -> findingStatus == filter
     }
+
+    private fun normalizeTab(value: String?): String = value?.takeIf { candidate -> candidate in TABS } ?: TAB_LIBRARIES
 
     private fun parseSeverityFilter(value: String?): Severity? =
         Severity.entries.firstOrNull { candidate -> candidate.name == value?.uppercase() }
@@ -282,7 +301,7 @@ class PageController(
         domain = domain,
         counts = Severity.entries
             .filter { severity -> severity in countBySeverity }
-            .map { severity -> SeverityBadge(severity.name, "${severity.label} ${countBySeverity.getValue(severity)}") },
+            .map { severity -> countBySeverity.getValue(severity).toInt().let { total -> SeverityBadge(severity.name, "${severity.label} $total", total) } },
     )
 
     private fun Project.toDetailView() = ProjectDetailView(
@@ -321,6 +340,10 @@ class PageController(
         const val OPEN = "open"
         const val BYTE_ORDER_MARK = "\uFEFF"
         const val SHOWN_SITE_SCANS = 5
+        const val TAB_LIBRARIES = "libraries"
+        const val TAB_SITE = "site"
+        const val TAB_SETTINGS = "settings"
+        val TABS = setOf(TAB_LIBRARIES, TAB_SITE, TAB_SETTINGS)
         val SITE_SCAN_STATUS_LABELS = mapOf(
             SiteScanStatus.RUNNING to "진행 중",
             SiteScanStatus.SUCCEEDED to "성공",
