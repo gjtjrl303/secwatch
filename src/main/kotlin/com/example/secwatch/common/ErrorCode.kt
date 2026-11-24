@@ -11,6 +11,8 @@ enum class ErrorCode(val status: HttpStatus, val code: Int, val message: String)
     INVALID_STATUS(HttpStatus.BAD_REQUEST, 40005, "올바르지 않은 상태입니다."),
     INVALID_SEVERITY(HttpStatus.BAD_REQUEST, 40006, "올바르지 않은 위험도입니다."),
     INVALID_NAME(HttpStatus.BAD_REQUEST, 40007, "프로젝트 이름은 1자 이상 100자 이하로 입력해주세요."),
+    INVALID_SITE_SCAN_PATH(HttpStatus.BAD_REQUEST, 40008, "시작 경로는 /로 시작하는 이 사이트 안의 경로로 입력해주세요."),
+    INVALID_SITE_CREDENTIALS(HttpStatus.BAD_REQUEST, 40009, "사이트 점검 인증 정보를 확인해주세요. 아이디와 비밀번호는 100자 이하이고, 아이디에는 콜론(:)을 넣을 수 없습니다."),
 
     SCAN_TARGET_NOT_ALLOWED(HttpStatus.FORBIDDEN, 40301, "점검이 허용되지 않은 주소입니다. 설정의 허용 목록에 있는 주소만 점검할 수 있습니다."),
 

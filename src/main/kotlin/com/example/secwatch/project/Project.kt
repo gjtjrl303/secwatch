@@ -26,6 +26,23 @@ class Project(name: String, domain: String) {
     var webhookUrl: String? = null
         protected set
 
+    @Column(name = "site_scan_path")
+    var siteScanPath: String? = null
+        protected set
+
+    @Column(name = "site_auth_username")
+    private var siteAuthUsername: String? = null
+
+    @Column(name = "site_auth_password")
+    private var siteAuthPassword: String? = null
+
+    val siteCredentials: SiteCredentials?
+        get() {
+            val username = siteAuthUsername ?: return null
+            val password = siteAuthPassword ?: return null
+            return SiteCredentials(username, password)
+        }
+
     @Column(name = "last_checked_at")
     var lastCheckedAt: LocalDateTime? = null
         protected set
@@ -50,6 +67,20 @@ class Project(name: String, domain: String) {
 
     fun changeWebhook(webhookUrl: String) {
         this.webhookUrl = webhookUrl
+    }
+
+    fun changeSiteScanPath(path: String?) {
+        siteScanPath = path
+    }
+
+    fun changeSiteCredentials(credentials: SiteCredentials) {
+        siteAuthUsername = credentials.username
+        siteAuthPassword = credentials.password
+    }
+
+    fun clearSiteCredentials() {
+        siteAuthUsername = null
+        siteAuthPassword = null
     }
 
     fun markChecked(checkedAt: LocalDateTime) {

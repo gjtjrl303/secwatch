@@ -22,4 +22,27 @@ class ProjectManagement(private val projectRepository: ProjectRepository) {
         project.changeWebhook(url)
         projectRepository.save(project)
     }
+
+    @Transactional
+    fun changeSiteScanPath(id: Long, rawPath: String) {
+        val path = SiteScanSettings.path(rawPath)
+        val project = get(id)
+        project.changeSiteScanPath(path)
+        projectRepository.save(project)
+    }
+
+    @Transactional
+    fun changeSiteCredentials(id: Long, username: String, password: String) {
+        val credentials = SiteScanSettings.credentials(username, password)
+        val project = get(id)
+        project.changeSiteCredentials(credentials)
+        projectRepository.save(project)
+    }
+
+    @Transactional
+    fun clearSiteCredentials(id: Long) {
+        val project = get(id)
+        project.clearSiteCredentials()
+        projectRepository.save(project)
+    }
 }

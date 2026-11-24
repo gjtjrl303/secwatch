@@ -255,6 +255,29 @@
         <p class="muted">웹훅 주소는 비밀값이라 저장한 뒤에는 화면에 다시 보여주지 않습니다. 새 주소를 넣으면 바뀝니다.</p>
         <button class="primary" type="submit">저장</button>
     </form>
+
+    <h2 id="site-access">사이트 점검</h2>
+    <p th:if="${siteAccessError}" class="error" th:text="${siteAccessError}"></p>
+    <form class="panel stack" method="post" th:action="@{/projects/{id}/site-scan-path(id=${project.id})}">
+        <label for="sitePath">시작 경로</label>
+        <input type="text" id="sitePath" name="path" autocomplete="off" placeholder="/sejong" th:value="${project.siteScanPath}">
+        <p class="muted">비워 두면 첫 화면(<code th:text="${project.domain}"></code>)부터 둘러봅니다.</p>
+        <button class="primary" type="submit">저장</button>
+    </form>
+    <form class="panel stack" method="post" th:action="@{/projects/{id}/site-credentials(id=${project.id})}">
+        <p th:text="${project.siteCredentialsConfigured} ? '사이트 점검 인증 설정됨' : '사이트 점검 인증 없음'"></p>
+        <p class="muted">브라우저에서 아이디와 비밀번호를 묻는 창(Basic 인증)이 뜨는 사이트에 씁니다. 사이트 안의 로그인 화면에는 쓰지 못합니다.</p>
+        <label for="siteUsername">아이디</label>
+        <input type="text" id="siteUsername" name="username" autocomplete="off" required>
+        <label for="sitePassword">비밀번호</label>
+        <input type="password" id="sitePassword" name="password" autocomplete="new-password" required>
+        <p class="muted">비밀번호는 저장한 뒤에 화면에 다시 보여주지 않습니다. 새로 넣으면 바뀝니다.</p>
+        <button class="primary" type="submit">저장</button>
+    </form>
+    <form th:if="${project.siteCredentialsConfigured}" class="panel stack" method="post" th:action="@{/projects/{id}/site-credentials/delete(id=${project.id})}">
+        <p class="muted">인증 정보를 지우면 다음 점검부터 인증 없이 둘러봅니다.</p>
+        <button type="submit">인증 정보 지우기</button>
+    </form>
     </section>
 </main>
 </div>

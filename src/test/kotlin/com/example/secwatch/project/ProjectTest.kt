@@ -19,6 +19,20 @@ class ProjectTest {
     }
 
     @Test
+    @DisplayName("사이트 점검 인증 정보를 저장하고 지운다")
+    fun site_credentials_can_be_set_and_cleared() {
+        val project = Project("모꼬지", "mokkoji.kr")
+        assertThat(project.siteCredentials).isNull()
+
+        project.changeSiteCredentials(SiteCredentials("user", "pw"))
+        assertThat(project.siteCredentials?.username).isEqualTo("user")
+        assertThat(project.siteCredentials?.password).isEqualTo("pw")
+
+        project.clearSiteCredentials()
+        assertThat(project.siteCredentials).isNull()
+    }
+
+    @Test
     @DisplayName("웹훅 주소를 바꾼다")
     fun changeWebhook_changes_webhook_url() {
         val project = Project("모꼬지", "mokkoji.kr")
