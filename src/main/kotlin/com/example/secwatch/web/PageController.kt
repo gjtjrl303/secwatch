@@ -38,12 +38,14 @@ data class Option(val value: String, val label: String)
 
 data class DashboardRow(val id: Long, val name: String, val domain: String, val counts: List<SeverityBadge>)
 
-/** 웹훅 주소는 비밀값이라 화면 모델에 일부러 넣지 않고, 설정 여부만 담는다. */
+/** 웹훅 주소와 사이트 점검 인증 정보는 비밀값이라 화면 모델에 일부러 넣지 않고, 설정 여부만 담는다. */
 data class ProjectDetailView(
     val id: Long,
     val name: String,
     val domain: String,
     val webhookConfigured: Boolean,
+    val siteScanPath: String?,
+    val siteCredentialsConfigured: Boolean,
     val lastCheckedAt: LocalDateTime?,
     val lastCheckError: String?,
     val lastNotifyError: String?,
@@ -154,6 +156,34 @@ class PageController(
         renderDetail(id, model, null, e.message, null, ALL, tab = TAB_SETTINGS)
     }
 
+    @PostMapping("/projects/{id}/site-scan-path")
+    fun changeSiteScanPath(@PathVariable id: Long, @RequestParam(defaultValue = "") path: String, model: Model): String = try {
+        projectManagement.changeSiteScanPath(id, path)
+        "redirect:/projects/$id?tab=$TAB_SETTINGS"
+    } catch (e: SecwatchException) {
+        renderDetail(id, model, null, null, null, ALL, tab = TAB_SETTINGS, siteAccessError = e.message)
+    }
+
+    /** 실패해서 다시 그릴 때 입력한 비밀번호는 되돌려 담지 않는다. */
+    @PostMapping("/projects/{id}/site-credentials")
+    fun changeSiteCredentials(
+        @PathVariable id: Long,
+        @RequestParam(defaultValue = "") username: String,
+        @RequestParam(defaultValue = "") password: String,
+        model: Model,
+    ): String = try {
+        projectManagement.changeSiteCredentials(id, username, password)
+        "redirect:/projects/$id?tab=$TAB_SETTINGS"
+    } catch (e: SecwatchException) {
+        renderDetail(id, model, null, null, null, ALL, tab = TAB_SETTINGS, siteAccessError = e.message)
+    }
+
+    @PostMapping("/projects/{id}/site-credentials/delete")
+    fun clearSiteCredentials(@PathVariable id: Long): String {
+        projectManagement.clearSiteCredentials(id)
+        return "redirect:/projects/$id?tab=$TAB_SETTINGS"
+    }
+
     @PostMapping("/projects/{id}/findings/{findingId}/status")
     fun changeStatus(
         @PathVariable id: Long,
@@ -197,9 +227,11 @@ class PageController(
         status: String,
         siteScanError: String? = null,
         tab: String = TAB_LIBRARIES,
+        siteAccessError: String? = null,
     ): String {
         val project = projectManagement.get(id)
         model.addAttribute("tab", tab)
+        model.addAttribute("siteAccessError", siteAccessError)
         addSiteScan(model, id, project.domain, siteScanError)
         val all = findingService.list(id, null, null).map { finding -> finding.toRow() }
         val open = all.filter { row -> row.status in OPEN_STATUS_NAMES }
@@ -309,6 +341,8 @@ class PageController(
         name = name,
         domain = domain,
         webhookConfigured = !webhookUrl.isNullOrBlank(),
+        siteScanPath = siteScanPath,
+        siteCredentialsConfigured = siteCredentials != null,
         lastCheckedAt = lastCheckedAt,
         lastCheckError = lastCheckError,
         lastNotifyError = lastNotifyError,

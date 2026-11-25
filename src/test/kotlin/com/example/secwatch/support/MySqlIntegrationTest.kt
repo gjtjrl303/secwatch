@@ -14,6 +14,6 @@ class MySqlContainerConfig {
     fun mysql(): MySQLContainer<*> = MySQLContainer("mysql:8.0")
 }
 
-@SpringBootTest(properties = ["secwatch.recheck.cron=-"])
+@SpringBootTest(properties = ["secwatch.recheck.cron=-", "secwatch.site-scan.allowed-hosts=localhost"])
 @Import(MySqlContainerConfig::class)
 abstract class MySqlIntegrationTest

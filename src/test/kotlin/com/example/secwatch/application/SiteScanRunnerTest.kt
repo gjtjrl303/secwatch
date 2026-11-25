@@ -2,6 +2,7 @@ package com.example.secwatch.application
 
 import com.example.secwatch.common.ErrorCode
 import com.example.secwatch.common.SecwatchException
+import com.example.secwatch.project.ProjectManagement
 import com.example.secwatch.sitescan.SiteScanFailedException
 import com.example.secwatch.support.FakeExternalApiIntegrationTest
 import java.time.Duration
@@ -18,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired
 @DisplayName("사이트 점검 실행")
 class SiteScanRunnerTest : FakeExternalApiIntegrationTest() {
     @Autowired lateinit var runner: SiteScanRunner
+    @Autowired lateinit var projectManagement: ProjectManagement
 
     private var projectId = 0L
     private var outsideProjectId = 0L
@@ -50,9 +52,24 @@ class SiteScanRunnerTest : FakeExternalApiIntegrationTest() {
         val row = awaitFinished(scanId)
         assertThat(row["status"]).isEqualTo("SUCCEEDED")
         assertThat(row["raw_json"]).isEqualTo(fixture())
-        assertThat(fakeSiteScanner.scanned).containsExactly("http://localhost:3000")
+        assertThat(fakeSiteScanner.scanned.map { target -> target.url }).containsExactly("http://localhost:3000")
+        assertThat(fakeSiteScanner.scanned.single().credentials).isNull()
         val refs = jdbcTemplate.queryForList("select alert_ref from site_finding where project_id = ? order by alert_ref", String::class.java, projectId)
         assertThat(refs).containsExactly("10038-1", "10095", "10109", "10110")
+    }
+
+    @Test
+    @DisplayName("프로젝트에 저장한 시작 경로와 인증 정보를 점검 도구에 넘긴다")
+    fun request_passes_the_start_path_and_credentials() {
+        projectManagement.changeSiteScanPath(projectId, "/app")
+        projectManagement.changeSiteCredentials(projectId, "user", "pw")
+
+        awaitFinished(runner.request(projectId))
+
+        val target = fakeSiteScanner.scanned.single()
+        assertThat(target.url).isEqualTo("http://localhost:3000/app")
+        assertThat(target.credentials?.username).isEqualTo("user")
+        assertThat(target.credentials?.password).isEqualTo("pw")
     }
 
     @Test

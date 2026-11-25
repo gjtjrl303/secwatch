@@ -2,6 +2,7 @@ package com.example.secwatch.sitescan
 
 import com.example.secwatch.common.ErrorCode
 import com.example.secwatch.common.SecwatchException
+import com.example.secwatch.project.SiteCredentials
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -25,6 +26,22 @@ class SiteScanTargetsTest {
     }
 
     @Test
+    @DisplayName("시작 경로가 있으면 주소 뒤에 붙인다")
+    fun start_path_is_appended() {
+        assertThat(targets().urlFor("dev.example.com", "/app")).isEqualTo("https://dev.example.com/app")
+        assertThat(targets().urlFor("localhost:3000", "/app?x=1")).isEqualTo("http://localhost:3000/app?x=1")
+        assertThat(targets().urlFor("dev.example.com", null)).isEqualTo("https://dev.example.com")
+    }
+
+    @Test
+    @DisplayName("점검 대상을 문자열로 바꿔도 비밀번호는 나오지 않는다")
+    fun target_toString_hides_the_password() {
+        val target = SiteScanTarget("https://dev.example.com", SiteCredentials("user", "topsecret"))
+
+        assertThat(target.toString()).contains("https://dev.example.com").doesNotContain("topsecret")
+    }
+
+    @Test
     @DisplayName("허용 목록은 대소문자와 앞뒤 공백을 가리지 않는다")
     fun allow_list_is_normalized() {
         assertThat(targets(" Dev.Example.com ").urlFor("dev.example.com:8443")).isEqualTo("https://dev.example.com:8443")
@@ -40,9 +57,10 @@ class SiteScanTargetsTest {
     }
 
     @Test
-    @DisplayName("허용 목록이 비어 있으면 아무 주소도 점검할 수 없다")
-    fun empty_allow_list_rejects_everything() {
-        assertThat(assertThrows<SecwatchException> { targets().urlFor("localhost:3000") }.errorCode)
-            .isEqualTo(ErrorCode.SCAN_TARGET_NOT_ALLOWED)
+    @DisplayName("허용 목록이 비어 있으면 모든 주소를 점검한다")
+    fun empty_allow_list_allows_everything() {
+        assertThat(targets().urlFor("localhost:3000")).isEqualTo("http://localhost:3000")
+        assertThat(targets().urlFor("dev.example.com")).isEqualTo("https://dev.example.com")
+        assertThat(targets("", " ").isAllowed("example.com")).isTrue()
     }
 }

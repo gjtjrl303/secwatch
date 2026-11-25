@@ -1,10 +1,11 @@
 package com.example.secwatch.support
 
+import com.example.secwatch.sitescan.SiteScanTarget
 import com.example.secwatch.sitescan.SiteScanner
 import java.util.concurrent.CopyOnWriteArrayList
 
 class FakeSiteScanner : SiteScanner {
-    val scanned: MutableList<String> = CopyOnWriteArrayList()
+    val scanned: MutableList<SiteScanTarget> = CopyOnWriteArrayList()
     var result: String = EMPTY_REPORT
     var failure: RuntimeException? = null
     var onScan: (() -> Unit)? = null
@@ -16,8 +17,8 @@ class FakeSiteScanner : SiteScanner {
         onScan = null
     }
 
-    override fun scan(targetUrl: String): String {
-        scanned.add(targetUrl)
+    override fun scan(target: SiteScanTarget): String {
+        scanned.add(target)
         onScan?.invoke()
         failure?.let { throw it }
         return result

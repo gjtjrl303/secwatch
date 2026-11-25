@@ -5,6 +5,7 @@ import com.example.secwatch.common.SecwatchException
 import com.example.secwatch.project.ProjectManagement
 import com.example.secwatch.sitescan.SiteScanFailedException
 import com.example.secwatch.sitescan.SiteScanRecorder
+import com.example.secwatch.sitescan.SiteScanTarget
 import com.example.secwatch.sitescan.SiteScanTargets
 import com.example.secwatch.sitescan.SiteScanner
 import com.example.secwatch.sitescan.ZapReportParser
@@ -27,10 +28,11 @@ class SiteScanRunner(
 
     /** 점검은 1분쯤 걸려서 기다리지 않고 번호만 돌려준다. 결과는 끝난 뒤 점검 기록에서 본다. */
     fun request(projectId: Long): Long {
-        val targetUrl = siteScanTargets.urlFor(projectManagement.get(projectId).domain)
+        val project = projectManagement.get(projectId)
+        val target = SiteScanTarget(siteScanTargets.urlFor(project.domain, project.siteScanPath), project.siteCredentials)
         val scanId = siteScanRecorder.start(projectId).id!!
         try {
-            siteScanExecutor.execute { run(scanId, targetUrl) }
+            siteScanExecutor.execute { run(scanId, target) }
         } catch (e: TaskRejectedException) {
             siteScanRecorder.fail(scanId, "점검을 시작하지 못했습니다.")
             throw SecwatchException(ErrorCode.SCAN_IN_PROGRESS)
@@ -38,9 +40,9 @@ class SiteScanRunner(
         return scanId
     }
 
-    private fun run(scanId: Long, targetUrl: String) {
+    private fun run(scanId: Long, target: SiteScanTarget) {
         try {
-            val rawJson = siteScanner.scan(targetUrl)
+            val rawJson = siteScanner.scan(target)
             siteScanRecorder.succeed(scanId, rawJson, zapReportParser.parse(rawJson))
         } catch (e: SiteScanFailedException) {
             siteScanRecorder.fail(scanId, e.message ?: UNEXPECTED)

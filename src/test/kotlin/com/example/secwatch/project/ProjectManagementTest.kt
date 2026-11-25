@@ -70,4 +70,45 @@ class ProjectManagementTest : MySqlIntegrationTest() {
         assertThatThrownBy { projectManagement.changeWebhook(projectId + 999, "https://discord.com/api/webhooks/1/a") }
             .isInstanceOfSatisfying(SecwatchException::class.java) { assertThat(it.errorCode).isEqualTo(ErrorCode.NOT_FOUND_PROJECT) }
     }
+
+    private fun storedSiteScanColumns(): Map<String, Any?> =
+        jdbcTemplate.queryForMap("select site_scan_path, site_auth_username, site_auth_password from project where id = ?", projectId)
+
+    @Test
+    @DisplayName("사이트 점검 시작 경로를 저장하고, 비우면 지운다")
+    fun changes_site_scan_path() {
+        projectManagement.changeSiteScanPath(projectId, " /app ")
+        assertThat(storedSiteScanColumns()["site_scan_path"]).isEqualTo("/app")
+
+        projectManagement.changeSiteScanPath(projectId, "")
+        assertThat(storedSiteScanColumns()["site_scan_path"]).isNull()
+    }
+
+    @Test
+    @DisplayName("틀린 시작 경로는 거부하고 저장하지 않는다")
+    fun rejects_invalid_site_scan_path() {
+        assertThatThrownBy { projectManagement.changeSiteScanPath(projectId, "//evil.example.com") }
+            .isInstanceOfSatisfying(SecwatchException::class.java) { assertThat(it.errorCode).isEqualTo(ErrorCode.INVALID_SITE_SCAN_PATH) }
+        assertThat(storedSiteScanColumns()["site_scan_path"]).isNull()
+    }
+
+    @Test
+    @DisplayName("사이트 점검 인증 정보를 저장하고 지운다")
+    fun changes_and_clears_site_credentials() {
+        projectManagement.changeSiteCredentials(projectId, "user", "pw")
+        assertThat(storedSiteScanColumns()).containsEntry("site_auth_username", "user").containsEntry("site_auth_password", "pw")
+
+        projectManagement.clearSiteCredentials(projectId)
+        assertThat(storedSiteScanColumns()).containsEntry("site_auth_username", null).containsEntry("site_auth_password", null)
+    }
+
+    @Test
+    @DisplayName("틀린 인증 정보는 거부하고 이전 값을 그대로 둔다")
+    fun rejects_invalid_site_credentials() {
+        projectManagement.changeSiteCredentials(projectId, "user", "pw")
+
+        assertThatThrownBy { projectManagement.changeSiteCredentials(projectId, "user", "") }
+            .isInstanceOfSatisfying(SecwatchException::class.java) { assertThat(it.errorCode).isEqualTo(ErrorCode.INVALID_SITE_CREDENTIALS) }
+        assertThat(storedSiteScanColumns()).containsEntry("site_auth_username", "user").containsEntry("site_auth_password", "pw")
+    }
 }
