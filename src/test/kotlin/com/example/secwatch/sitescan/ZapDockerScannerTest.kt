@@ -156,6 +156,40 @@ class ZapDockerScannerTest {
     }
 
     @Test
+    @DisplayName("비밀번호가 위험도나 규칙 번호와 같아도 그 값은 가리지 않는다")
+    fun masking_keeps_risk_and_rule_ids() {
+        val report = Files.writeString(
+            tempDir.resolve("short.json"),
+            """{"site":[{"alerts":[{"pluginid":"3","alertRef":"3","riskcode":"3","confidence":"3","cweid":"3","wascid":"3","sourceid":"3","count":"3","otherinfo":"pw 3"}]}]}""",
+        )
+
+        val result = scanner("cp \"$report\" \"\$dir/report.json\"; exit 0")
+            .scan(target("https://dev.example.com", SiteCredentials("user", "3")))
+
+        val alert = com.fasterxml.jackson.databind.ObjectMapper().readTree(result).path("site")[0].path("alerts")[0]
+        listOf("pluginid", "alertRef", "riskcode", "confidence", "cweid", "wascid", "sourceid", "count").forEach { field ->
+            assertThat(alert.path(field).asText()).`as`(field).isEqualTo("3")
+        }
+        assertThat(alert.path("otherinfo").asText()).isEqualTo("pw ******")
+    }
+
+    @Test
+    @DisplayName("localhost 점검에서 비밀번호에 컨테이너용 호스트 이름이 들어 있어도 가린다")
+    fun masking_runs_before_localhost_is_restored() {
+        val password = "http://host.docker.internal:3000/key"
+        val report = Files.writeString(
+            tempDir.resolve("host.json"),
+            """{"site":[{"alerts":[{"otherinfo":"pw $password","instances":[{"uri":"http://host.docker.internal:3000/a"}]}]}]}""",
+        )
+
+        val result = scanner("cp \"$report\" \"\$dir/report.json\"; exit 0")
+            .scan(target("http://localhost:3000", SiteCredentials("user", password)))
+
+        assertThat(result).doesNotContain("localhost:3000/key").doesNotContain(password)
+        assertThat(result).contains("http://localhost:3000/a")
+    }
+
+    @Test
     @DisplayName("인증 정보는 docker 명령줄에 나오지 않는다")
     fun credentials_never_reach_the_command_line() {
         scanner("$writeReport; exit 0").scan(target("https://dev.example.com", credentials))

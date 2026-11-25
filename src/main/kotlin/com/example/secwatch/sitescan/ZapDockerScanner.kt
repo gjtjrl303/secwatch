@@ -48,8 +48,8 @@ class ZapDockerScanner(
             val report = workDir.resolve(REPORT_FILE)
             if (!Files.isRegularFile(report)) throw SiteScanFailedException("ZAP이 결과 파일을 만들지 않았습니다.")
             val rawJson = Files.readString(report)
-            val restored = if (localHost == null) rawJson else rawJson.replace(CONTAINER_HOST_IN_URL) { match -> match.groupValues[1] + localHost }
-            return target.credentials?.let { credentials -> maskCredentials(restored, credentials) } ?: restored
+            val masked = target.credentials?.let { credentials -> maskCredentials(rawJson, credentials) } ?: rawJson
+            return if (localHost == null) masked else masked.replace(CONTAINER_HOST_IN_URL) { match -> match.groupValues[1] + localHost }
         } finally {
             deleteWithoutFollowingLinks(privateDir)
         }
@@ -127,6 +127,7 @@ class ZapDockerScanner(
         when (node) {
             is ObjectNode -> node.fieldNames().asSequence().toList().forEach { name ->
                 val child = node.get(name)
+                if (name in ZAP_DEFINED_FIELDS) return@forEach
                 if (child.isTextual) node.put(name, masked(child.asText())) else maskTextValues(child, secrets)
             }
             is ArrayNode -> (0 until node.size()).forEach { index ->
@@ -227,6 +228,9 @@ class ZapDockerScanner(
         // YAML에서 따옴표 없는 off는 false로 읽혀서 따옴표를 붙인다.
         const val CAPTURED_CREDENTIALS_RULE_OFF = "  rules:\n  - id: 10105\n    threshold: \"off\"\n"
         val REPORT_MAPPER = ObjectMapper()
+
+        // ZAP이 정해 둔 번호라 요청 내용이 들어가지 않는다. 짧은 비밀번호와 겹쳐도 위험도와 규칙 번호가 바뀌지 않게 둔다.
+        val ZAP_DEFINED_FIELDS = setOf("pluginid", "alertRef", "riskcode", "confidence", "cweid", "wascid", "sourceid", "count")
 
         // 기본 점검 스크립트가 함께 쓰는 규칙 묶음이다. 빼면 연습용 사이트에서 10종이던 항목이 3종으로 준다.
         const val BETA_PASSIVE_RULES = "pscanrulesBeta"
