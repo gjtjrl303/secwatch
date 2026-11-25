@@ -6,9 +6,9 @@ import org.flywaydb.core.api.migration.BaseJavaMigration
 import org.flywaydb.core.api.migration.Context
 import org.springframework.stereotype.Component
 
-internal val PROJECT_SECRET_COLUMNS = listOf("webhook_url", "site_auth_password")
+internal val PROJECT_SECRET_COLUMNS = listOf("webhook_url")
 
-/** 암호화를 넣기 전에 평문으로 저장한 웹훅 주소와 사이트 점검 비밀번호를 한 번 암호화한다. */
+/** 암호화를 넣기 전에 평문으로 저장한 웹훅 주소를 한 번 암호화한다. */
 @Component
 @Suppress("ClassName")
 class V9__encrypt_existing_secrets(private val secretCipher: SecretCipher) : BaseJavaMigration() {

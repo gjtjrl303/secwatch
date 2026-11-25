@@ -22,6 +22,10 @@ object SiteScanSettings {
         return path
     }
 
+    /** 점검할 때 받은 값이다. 둘 다 비우면 인증 없이 점검하고, 하나만 넣으면 거부한다. */
+    fun optionalCredentials(rawUsername: String, password: String): SiteCredentials? =
+        if (rawUsername.isBlank() && password.isEmpty()) null else credentials(rawUsername, password)
+
     fun credentials(rawUsername: String, password: String): SiteCredentials {
         val username = rawUsername.trim()
         val usernameOk = username.isNotEmpty() && ':' !in username && username.none { character -> character.isISOControl() }

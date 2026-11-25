@@ -2,6 +2,7 @@ package com.example.secwatch.web
 
 import com.example.secwatch.support.FakeExternalApiIntegrationTest
 import java.time.Duration
+import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility
 import org.hamcrest.Matchers.hasSize
 import org.junit.jupiter.api.BeforeEach
@@ -9,6 +10,7 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
@@ -56,6 +58,28 @@ class SiteScanControllerTest : FakeExternalApiIntegrationTest() {
             .andExpect(jsonPath("$.data[0].status").value("NEW"))
             .andExpect(jsonPath("$.data[0].references").isArray)
             .andExpect(jsonPath("$.data[0].sampleUrls").isArray)
+    }
+
+    @Test
+    @DisplayName("요청 본문에 Basic 인증 정보를 넣으면 이번 점검에만 쓴다")
+    fun credentials_in_the_request_body_are_used_for_this_scan() {
+        mockMvc.perform(
+            post("/api/projects/$projectId/site-scans").contentType(MediaType.APPLICATION_JSON)
+                .content("""{"username":"scan-user","password":"api-secret"}"""),
+        ).andExpect(status().isAccepted)
+        awaitNoRunningScan()
+
+        assertThat(fakeSiteScanner.scanned.single().credentials?.password).isEqualTo("api-secret")
+    }
+
+    @Test
+    @DisplayName("인증 정보가 하나만 있으면 400을 돌려주고 점검하지 않는다")
+    fun partial_credentials_in_the_request_body_are_400() {
+        mockMvc.perform(
+            post("/api/projects/$projectId/site-scans").contentType(MediaType.APPLICATION_JSON).content("""{"username":"scan-user"}"""),
+        ).andExpect(status().isBadRequest)
+
+        assertThat(fakeSiteScanner.scanned).isEmpty()
     }
 
     @Test

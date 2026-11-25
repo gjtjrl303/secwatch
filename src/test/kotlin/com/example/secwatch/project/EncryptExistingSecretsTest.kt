@@ -19,27 +19,22 @@ class EncryptExistingSecretsTest : MySqlIntegrationTest() {
     @Autowired lateinit var projectManagement: ProjectManagement
 
     @Test
-    @DisplayName("평문 웹훅 주소와 비밀번호를 암호화하고, 비어 있는 값은 그대로 둔다")
+    @DisplayName("평문 웹훅 주소를 암호화하고, 비어 있는 값은 그대로 둔다")
     fun encrypts_plain_values_and_keeps_nulls() {
         jdbcTemplate.update("delete from project")
         jdbcTemplate.update(
-            "insert into project(name, domain, webhook_url, site_auth_username, site_auth_password) values " +
-                "('a', 'a.example.com', 'https://discord.com/api/webhooks/1/old-token', 'user', 'old-pw'), " +
-                "('b', 'b.example.com', null, null, null)",
+            "insert into project(name, domain, webhook_url) values " +
+                "('a', 'a.example.com', 'https://discord.com/api/webhooks/1/old-token'), ('b', 'b.example.com', null)",
         )
 
         dataSource.connection.use(migration::encryptExisting)
 
-        val rows = jdbcTemplate.queryForList("select name, webhook_url, site_auth_username, site_auth_password from project order by name")
+        val rows = jdbcTemplate.queryForList("select name, webhook_url from project order by name")
         assertThat(rows[0]["webhook_url"] as String).startsWith("v1:").doesNotContain("old-token")
-        assertThat(rows[0]["site_auth_password"] as String).startsWith("v1:").doesNotContain("old-pw")
-        assertThat(rows[0]["site_auth_username"]).isEqualTo("user")
         assertThat(rows[1]["webhook_url"]).isNull()
-        assertThat(rows[1]["site_auth_password"]).isNull()
 
         val project = projectManagement.list().first { it.name == "a" }
         assertThat(project.webhookUrl).isEqualTo("https://discord.com/api/webhooks/1/old-token")
-        assertThat(project.siteCredentials?.password).isEqualTo("old-pw")
     }
 
     @Test

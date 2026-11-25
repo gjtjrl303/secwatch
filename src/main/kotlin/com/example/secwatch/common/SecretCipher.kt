@@ -9,7 +9,7 @@ import javax.crypto.spec.SecretKeySpec
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 
-/** 다시 꺼내 써야 하는 비밀 값(웹훅 주소, 사이트 점검 비밀번호)을 AES-GCM으로 암호화한다. */
+/** 다시 꺼내 써야 하는 비밀 값(웹훅 주소)을 AES-GCM으로 암호화한다. */
 @Component
 class SecretCipher(@Value("\${secwatch.encryption-key:}") rawKey: String) {
     private val key = SecretKeySpec(decodeKey(rawKey), "AES")

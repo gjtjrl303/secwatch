@@ -14,6 +14,7 @@ import com.example.secwatch.finding.VulnerabilityType
 import com.example.secwatch.finding.VulnerabilityTypeReader
 import com.example.secwatch.project.Project
 import com.example.secwatch.project.ProjectManagement
+import com.example.secwatch.project.SiteScanSettings
 import com.example.secwatch.sitescan.SiteFinding
 import com.example.secwatch.sitescan.SiteRisk
 import com.example.secwatch.sitescan.SiteScanRecorder
@@ -38,14 +39,13 @@ data class Option(val value: String, val label: String)
 
 data class DashboardRow(val id: Long, val name: String, val domain: String, val counts: List<SeverityBadge>)
 
-/** 웹훅 주소와 사이트 점검 인증 정보는 비밀값이라 화면 모델에 일부러 넣지 않고, 설정 여부만 담는다. */
+/** 웹훅 주소는 비밀값이라 화면 모델에 일부러 넣지 않고, 설정 여부만 담는다. */
 data class ProjectDetailView(
     val id: Long,
     val name: String,
     val domain: String,
     val webhookConfigured: Boolean,
     val siteScanPath: String?,
-    val siteCredentialsConfigured: Boolean,
     val lastCheckedAt: LocalDateTime?,
     val lastCheckError: String?,
     val lastNotifyError: String?,
@@ -164,26 +164,6 @@ class PageController(
         renderDetail(id, model, null, null, null, ALL, tab = TAB_SETTINGS, siteAccessError = e.message)
     }
 
-    /** 실패해서 다시 그릴 때 입력한 비밀번호는 되돌려 담지 않는다. */
-    @PostMapping("/projects/{id}/site-credentials")
-    fun changeSiteCredentials(
-        @PathVariable id: Long,
-        @RequestParam(defaultValue = "") username: String,
-        @RequestParam(defaultValue = "") password: String,
-        model: Model,
-    ): String = try {
-        projectManagement.changeSiteCredentials(id, username, password)
-        "redirect:/projects/$id?tab=$TAB_SETTINGS"
-    } catch (e: SecwatchException) {
-        renderDetail(id, model, null, null, null, ALL, tab = TAB_SETTINGS, siteAccessError = e.message)
-    }
-
-    @PostMapping("/projects/{id}/site-credentials/delete")
-    fun clearSiteCredentials(@PathVariable id: Long): String {
-        projectManagement.clearSiteCredentials(id)
-        return "redirect:/projects/$id?tab=$TAB_SETTINGS"
-    }
-
     @PostMapping("/projects/{id}/findings/{findingId}/status")
     fun changeStatus(
         @PathVariable id: Long,
@@ -202,9 +182,15 @@ class PageController(
         return "redirect:" + back.fragment("f$findingId").build().encode().toUriString()
     }
 
+    /** 인증 정보는 이번 점검에만 넘기고, 실패해서 다시 그릴 때 입력한 비밀번호는 되돌려 담지 않는다. */
     @PostMapping("/projects/{id}/site-scans")
-    fun requestSiteScan(@PathVariable id: Long, model: Model): String = try {
-        siteScanRunner.request(id)
+    fun requestSiteScan(
+        @PathVariable id: Long,
+        @RequestParam(defaultValue = "") username: String,
+        @RequestParam(defaultValue = "") password: String,
+        model: Model,
+    ): String = try {
+        siteScanRunner.request(id, SiteScanSettings.optionalCredentials(username, password))
         "redirect:/projects/$id?tab=$TAB_SITE#site-scan"
     } catch (e: SecwatchException) {
         renderDetail(id, model, null, null, null, ALL, e.message, TAB_SITE)
@@ -342,7 +328,6 @@ class PageController(
         domain = domain,
         webhookConfigured = !webhookUrl.isNullOrBlank(),
         siteScanPath = siteScanPath,
-        siteCredentialsConfigured = siteCredentials != null,
         lastCheckedAt = lastCheckedAt,
         lastCheckError = lastCheckError,
         lastNotifyError = lastNotifyError,

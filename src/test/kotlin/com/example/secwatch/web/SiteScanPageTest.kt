@@ -72,6 +72,58 @@ class SiteScanPageTest : FakeExternalApiIntegrationTest() {
     }
 
     @Test
+    @DisplayName("점검 버튼 옆에 Basic 인증 아이디와 비밀번호 입력칸이 있다")
+    fun scan_form_has_optional_credentials() {
+        page()
+            .andExpect(content().string(containsString("name=\"username\"")))
+            .andExpect(content().string(containsString("type=\"password\" id=\"scanPassword\" name=\"password\"")))
+            .andExpect(content().string(containsString("저장하지 않습니다")))
+    }
+
+    @Test
+    @DisplayName("점검할 때 넣은 인증 정보는 점검 도구에만 넘기고 어디에도 저장하거나 보여주지 않는다")
+    fun credentials_typed_at_scan_time_are_used_once() {
+        mockMvc.perform(post("/projects/$projectId/site-scans").param("username", "scan-user").param("password", "typed-secret"))
+            .andExpect(status().is3xxRedirection)
+        awaitNoRunningScan()
+
+        val target = fakeSiteScanner.scanned.single()
+        assertThat(target.credentials?.username).isEqualTo("scan-user")
+        assertThat(target.credentials?.password).isEqualTo("typed-secret")
+        page().andExpect(content().string(not(containsString("typed-secret"))))
+        val columns = jdbcTemplate.queryForList(
+            "select column_name from information_schema.columns where table_schema = database() and table_name = 'project'", String::class.java,
+        )
+        assertThat(columns.map { it.lowercase() }).doesNotContain("site_auth_username", "site_auth_password")
+    }
+
+    @Test
+    @DisplayName("다음 점검은 인증 정보를 다시 넣지 않으면 인증 없이 둘러본다")
+    fun next_scan_without_credentials_has_none() {
+        mockMvc.perform(post("/projects/$projectId/site-scans").param("username", "scan-user").param("password", "typed-secret"))
+        awaitNoRunningScan()
+        rewindScans(60)
+
+        requestScan().andExpect(status().is3xxRedirection)
+        awaitNoRunningScan()
+
+        assertThat(fakeSiteScanner.scanned.map { it.credentials }.last()).isNull()
+    }
+
+    @Test
+    @DisplayName("아이디와 비밀번호 중 하나만 넣으면 점검하지 않고 안내 문구를 보여주며, 비밀번호를 되돌려 그리지 않는다")
+    fun partial_credentials_are_rejected() {
+        mockMvc.perform(post("/projects/$projectId/site-scans").param("username", "").param("password", "typed-secret"))
+            .andExpect(status().isOk)
+            .andExpect(model().attribute("tab", "site"))
+            .andExpect(content().string(containsString("사이트 점검 인증 정보를 확인해주세요.")))
+            .andExpect(content().string(not(containsString("typed-secret"))))
+
+        assertThat(fakeSiteScanner.scanned).isEmpty()
+        assertThat(jdbcTemplate.queryForObject("select count(*) from site_scan", Int::class.java)).isZero()
+    }
+
+    @Test
     @DisplayName("허용 목록에 없는 도메인의 프로젝트에는 버튼 대신 안내가 나온다")
     fun project_outside_the_allow_list_has_no_button() {
         page(outsideProjectId)

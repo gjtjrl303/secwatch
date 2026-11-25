@@ -27,12 +27,9 @@ class StoredSecretsCheckTest : MySqlIntegrationTest() {
 
     private var count = 0
 
-    private fun insert(webhook: String?, password: String?) {
+    private fun insert(webhook: String?) {
         count += 1
-        jdbcTemplate.update(
-            "insert into project(name, domain, webhook_url, site_auth_username, site_auth_password) values (?, ?, ?, ?, ?)",
-            "p$count", "p$count.example.com", webhook, password?.let { "user" }, password,
-        )
+        jdbcTemplate.update("insert into project(name, domain, webhook_url) values (?, ?, ?)", "p$count", "p$count.example.com", webhook)
     }
 
     private fun run() = storedSecretsCheck.run(DefaultApplicationArguments())
@@ -40,8 +37,8 @@ class StoredSecretsCheckTest : MySqlIntegrationTest() {
     @Test
     @DisplayName("지금 키로 저장한 값과 빈 값은 통과한다")
     fun passes_with_the_same_key() {
-        insert(secretCipher.encrypt("https://discord.com/api/webhooks/1/a"), secretCipher.encrypt("pw"))
-        insert(null, null)
+        insert(secretCipher.encrypt("https://discord.com/api/webhooks/1/a"))
+        insert(null)
 
         assertThatCode { run() }.doesNotThrowAnyException()
     }
@@ -49,16 +46,9 @@ class StoredSecretsCheckTest : MySqlIntegrationTest() {
     @Test
     @DisplayName("다른 키로 저장한 웹훅 주소가 있으면 앱을 시작하지 않는다")
     fun fails_when_webhook_was_saved_with_another_key() {
-        insert(otherCipher.encrypt("https://discord.com/api/webhooks/1/a"), null)
+        insert(otherCipher.encrypt("https://discord.com/api/webhooks/1/a"))
 
         assertThatThrownBy { run() }.isInstanceOf(IllegalStateException::class.java).hasMessageContaining("암호화 키")
     }
 
-    @Test
-    @DisplayName("다른 키로 저장한 비밀번호가 있으면 앱을 시작하지 않는다")
-    fun fails_when_password_was_saved_with_another_key() {
-        insert(null, otherCipher.encrypt("pw"))
-
-        assertThatThrownBy { run() }.isInstanceOf(IllegalStateException::class.java).hasMessageContaining("암호화 키")
-    }
 }

@@ -74,7 +74,7 @@ class ProjectManagementTest : MySqlIntegrationTest() {
     }
 
     private fun storedSiteScanColumns(): Map<String, Any?> =
-        jdbcTemplate.queryForMap("select site_scan_path, site_auth_username, site_auth_password from project where id = ?", projectId)
+        jdbcTemplate.queryForMap("select site_scan_path from project where id = ?", projectId)
 
     @Test
     @DisplayName("사이트 점검 시작 경로를 저장하고, 비우면 지운다")
@@ -92,37 +92,6 @@ class ProjectManagementTest : MySqlIntegrationTest() {
         assertThatThrownBy { projectManagement.changeSiteScanPath(projectId, "//evil.example.com") }
             .isInstanceOfSatisfying(SecwatchException::class.java) { assertThat(it.errorCode).isEqualTo(ErrorCode.INVALID_SITE_SCAN_PATH) }
         assertThat(storedSiteScanColumns()["site_scan_path"]).isNull()
-    }
-
-    @Test
-    @DisplayName("사이트 점검 인증 정보를 저장하고 지운다")
-    fun changes_and_clears_site_credentials() {
-        projectManagement.changeSiteCredentials(projectId, "user", "pw")
-        assertThat(storedSiteScanColumns()).containsEntry("site_auth_username", "user")
-        assertThat(decrypted(storedSiteScanColumns()["site_auth_password"])).isEqualTo("pw")
-
-        projectManagement.clearSiteCredentials(projectId)
-        assertThat(storedSiteScanColumns()).containsEntry("site_auth_username", null).containsEntry("site_auth_password", null)
-    }
-
-    @Test
-    @DisplayName("틀린 인증 정보는 거부하고 이전 값을 그대로 둔다")
-    fun rejects_invalid_site_credentials() {
-        projectManagement.changeSiteCredentials(projectId, "user", "pw")
-
-        assertThatThrownBy { projectManagement.changeSiteCredentials(projectId, "user", "") }
-            .isInstanceOfSatisfying(SecwatchException::class.java) { assertThat(it.errorCode).isEqualTo(ErrorCode.INVALID_SITE_CREDENTIALS) }
-        assertThat(storedSiteScanColumns()).containsEntry("site_auth_username", "user")
-        assertThat(decrypted(storedSiteScanColumns()["site_auth_password"])).isEqualTo("pw")
-    }
-
-    @Test
-    @DisplayName("사이트 점검 비밀번호는 DB에 암호화해 저장하고, 읽을 때는 원래 값으로 돌려준다")
-    fun site_password_is_encrypted_in_the_database() {
-        projectManagement.changeSiteCredentials(projectId, "user", "topsecret-pw")
-
-        assertThat(storedSiteScanColumns()["site_auth_password"] as String).startsWith("v1:").doesNotContain("topsecret-pw")
-        assertThat(projectManagement.get(projectId).siteCredentials?.password).isEqualTo("topsecret-pw")
     }
 
     @Test
