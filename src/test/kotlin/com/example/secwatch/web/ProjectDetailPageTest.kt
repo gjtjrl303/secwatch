@@ -451,7 +451,7 @@ class ProjectDetailPageTest : FakeExternalApiIntegrationTest() {
             .andExpect(status().is3xxRedirection)
             .andExpect(redirectedUrl("/projects/${project.id}?tab=settings"))
 
-        assertThat(jdbcTemplate.queryForObject("select webhook_url from project where id = ?", String::class.java, project.id)).isEqualTo(webhook)
+        assertThat(decrypted(jdbcTemplate.queryForObject("select webhook_url from project where id = ?", String::class.java, project.id))).isEqualTo(webhook)
         page()
             .andExpect(content().string(containsString("디스코드 알림 설정됨")))
             .andExpect(content().string(not(containsString("topsecret"))))
@@ -524,7 +524,8 @@ class ProjectDetailPageTest : FakeExternalApiIntegrationTest() {
         mockMvc.perform(post("/projects/${project.id}/site-credentials").param("username", "scan-user").param("password", sitePassword))
             .andExpect(redirectedUrl("/projects/${project.id}?tab=settings"))
 
-        assertThat(storedSiteCredentials()).containsEntry("site_auth_username", "scan-user").containsEntry("site_auth_password", sitePassword)
+        assertThat(storedSiteCredentials()).containsEntry("site_auth_username", "scan-user")
+        assertThat(decrypted(storedSiteCredentials()["site_auth_password"])).isEqualTo(sitePassword)
         listOf("/projects/${project.id}?tab=settings", "/projects/${project.id}?tab=site", "/projects/${project.id}").forEach { path ->
             page(path).andExpect(content().string(not(containsString(sitePassword))))
         }

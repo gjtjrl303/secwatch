@@ -26,8 +26,10 @@ class ProjectManagementTest : MySqlIntegrationTest() {
         projectId = jdbcTemplate.queryForObject("select id from project", Long::class.java)!!
     }
 
-    private fun storedWebhook() =
+    private fun rawWebhook(): String? =
         jdbcTemplate.queryForObject("select webhook_url from project where id = ?", String::class.java, projectId)
+
+    private fun storedWebhook() = decrypted(rawWebhook())
 
     @Test
     @DisplayName("등록된 프로젝트를 모두 돌려준다")
@@ -96,7 +98,8 @@ class ProjectManagementTest : MySqlIntegrationTest() {
     @DisplayName("사이트 점검 인증 정보를 저장하고 지운다")
     fun changes_and_clears_site_credentials() {
         projectManagement.changeSiteCredentials(projectId, "user", "pw")
-        assertThat(storedSiteScanColumns()).containsEntry("site_auth_username", "user").containsEntry("site_auth_password", "pw")
+        assertThat(storedSiteScanColumns()).containsEntry("site_auth_username", "user")
+        assertThat(decrypted(storedSiteScanColumns()["site_auth_password"])).isEqualTo("pw")
 
         projectManagement.clearSiteCredentials(projectId)
         assertThat(storedSiteScanColumns()).containsEntry("site_auth_username", null).containsEntry("site_auth_password", null)
@@ -109,6 +112,25 @@ class ProjectManagementTest : MySqlIntegrationTest() {
 
         assertThatThrownBy { projectManagement.changeSiteCredentials(projectId, "user", "") }
             .isInstanceOfSatisfying(SecwatchException::class.java) { assertThat(it.errorCode).isEqualTo(ErrorCode.INVALID_SITE_CREDENTIALS) }
-        assertThat(storedSiteScanColumns()).containsEntry("site_auth_username", "user").containsEntry("site_auth_password", "pw")
+        assertThat(storedSiteScanColumns()).containsEntry("site_auth_username", "user")
+        assertThat(decrypted(storedSiteScanColumns()["site_auth_password"])).isEqualTo("pw")
+    }
+
+    @Test
+    @DisplayName("사이트 점검 비밀번호는 DB에 암호화해 저장하고, 읽을 때는 원래 값으로 돌려준다")
+    fun site_password_is_encrypted_in_the_database() {
+        projectManagement.changeSiteCredentials(projectId, "user", "topsecret-pw")
+
+        assertThat(storedSiteScanColumns()["site_auth_password"] as String).startsWith("v1:").doesNotContain("topsecret-pw")
+        assertThat(projectManagement.get(projectId).siteCredentials?.password).isEqualTo("topsecret-pw")
+    }
+
+    @Test
+    @DisplayName("웹훅 주소는 DB에 암호화해 저장하고, 읽을 때는 원래 값으로 돌려준다")
+    fun webhook_is_encrypted_in_the_database() {
+        projectManagement.changeWebhook(projectId, "https://discord.com/api/webhooks/1/secret-token")
+
+        assertThat(rawWebhook()).startsWith("v1:").doesNotContain("secret-token").doesNotContain("discord")
+        assertThat(projectManagement.get(projectId).webhookUrl).isEqualTo("https://discord.com/api/webhooks/1/secret-token")
     }
 }

@@ -38,7 +38,7 @@ class NotificationControllerTest : MySqlIntegrationTest() {
     )
 
     private fun storedWebhook() =
-        jdbcTemplate.queryForObject("select webhook_url from project where id = ?", String::class.java, projectId)
+        decrypted(jdbcTemplate.queryForObject("select webhook_url from project where id = ?", String::class.java, projectId))
 
     @Test
     @DisplayName("디스코드 주소가 아니면 400과 안내 문구를 돌려준다")

@@ -162,7 +162,7 @@ class PageControllerTest : FakeExternalApiIntegrationTest() {
 
         assertThat(count("project")).isEqualTo(1)
         assertThat(count("dependency")).isEqualTo(1)
-        assertThat(jdbcTemplate.queryForObject("select webhook_url from project", String::class.java)).isEqualTo(webhook)
+        assertThat(decrypted(jdbcTemplate.queryForObject("select webhook_url from project", String::class.java))).isEqualTo(webhook)
     }
 
     @Test
