@@ -34,15 +34,18 @@ class ProjectManagement(private val projectRepository: ProjectRepository) {
     @Transactional
     fun changeSiteCredentials(id: Long, username: String, password: String) {
         val credentials = SiteScanSettings.credentials(username, password)
-        val project = get(id)
+        val project = lockedProject(id)
         project.changeSiteCredentials(credentials)
         projectRepository.save(project)
     }
 
     @Transactional
     fun clearSiteCredentials(id: Long) {
-        val project = get(id)
+        val project = lockedProject(id)
         project.clearSiteCredentials()
         projectRepository.save(project)
     }
+
+    private fun lockedProject(id: Long): Project =
+        projectRepository.findForUpdate(id) ?: throw SecwatchException(ErrorCode.NOT_FOUND_PROJECT)
 }
