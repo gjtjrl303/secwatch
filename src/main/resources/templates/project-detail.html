@@ -260,7 +260,7 @@
     <p th:if="${siteAccessError}" class="error" th:text="${siteAccessError}"></p>
     <form class="panel stack" method="post" th:action="@{/projects/{id}/site-scan-path(id=${project.id})}">
         <label for="sitePath">시작 경로</label>
-        <input type="text" id="sitePath" name="path" autocomplete="off" placeholder="/sejong" th:value="${project.siteScanPath}">
+        <input type="text" id="sitePath" name="path" autocomplete="off" placeholder="/app" th:value="${project.siteScanPath}">
         <p class="muted">비워 두면 첫 화면(<code th:text="${project.domain}"></code>)부터 둘러봅니다.</p>
         <button class="primary" type="submit">저장</button>
     </form>

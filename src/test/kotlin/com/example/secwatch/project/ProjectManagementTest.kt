@@ -77,8 +77,8 @@ class ProjectManagementTest : MySqlIntegrationTest() {
     @Test
     @DisplayName("사이트 점검 시작 경로를 저장하고, 비우면 지운다")
     fun changes_site_scan_path() {
-        projectManagement.changeSiteScanPath(projectId, " /sejong ")
-        assertThat(storedSiteScanColumns()["site_scan_path"]).isEqualTo("/sejong")
+        projectManagement.changeSiteScanPath(projectId, " /app ")
+        assertThat(storedSiteScanColumns()["site_scan_path"]).isEqualTo("/app")
 
         projectManagement.changeSiteScanPath(projectId, "")
         assertThat(storedSiteScanColumns()["site_scan_path"]).isNull()

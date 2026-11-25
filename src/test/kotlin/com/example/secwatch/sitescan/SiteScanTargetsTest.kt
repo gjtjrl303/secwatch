@@ -28,7 +28,7 @@ class SiteScanTargetsTest {
     @Test
     @DisplayName("시작 경로가 있으면 주소 뒤에 붙인다")
     fun start_path_is_appended() {
-        assertThat(targets().urlFor("dev.example.com", "/sejong")).isEqualTo("https://dev.example.com/sejong")
+        assertThat(targets().urlFor("dev.example.com", "/app")).isEqualTo("https://dev.example.com/app")
         assertThat(targets().urlFor("localhost:3000", "/app?x=1")).isEqualTo("http://localhost:3000/app?x=1")
         assertThat(targets().urlFor("dev.example.com", null)).isEqualTo("https://dev.example.com")
     }

@@ -10,7 +10,7 @@ class ProjectTest {
     @Test
     @DisplayName("이름과 도메인을 함께 바꾼다")
     fun update_changes_name_and_domain() {
-        val project = Project("모꼬지", "mokkoji.kr")
+        val project = Project("예시 서비스", "example.com")
 
         project.update("새 이름", "new.example.com")
 
@@ -21,7 +21,7 @@ class ProjectTest {
     @Test
     @DisplayName("사이트 점검 인증 정보를 저장하고 지운다")
     fun site_credentials_can_be_set_and_cleared() {
-        val project = Project("모꼬지", "mokkoji.kr")
+        val project = Project("예시 서비스", "example.com")
         assertThat(project.siteCredentials).isNull()
 
         project.changeSiteCredentials(SiteCredentials("user", "pw"))
@@ -35,7 +35,7 @@ class ProjectTest {
     @Test
     @DisplayName("웹훅 주소를 바꾼다")
     fun changeWebhook_changes_webhook_url() {
-        val project = Project("모꼬지", "mokkoji.kr")
+        val project = Project("예시 서비스", "example.com")
 
         project.changeWebhook("https://discord.com/api/webhooks/1/a")
 
@@ -45,7 +45,7 @@ class ProjectTest {
     @Test
     @DisplayName("점검에 성공하면 점검 시각을 기록하고 이전 오류를 지운다")
     fun markChecked_records_time_and_clears_error() {
-        val project = Project("모꼬지", "mokkoji.kr")
+        val project = Project("예시 서비스", "example.com")
         project.markCheckFailed("실패")
         val checkedAt = LocalDateTime.of(2026, 11, 16, 9, 0)
 
@@ -58,7 +58,7 @@ class ProjectTest {
     @Test
     @DisplayName("점검에 실패하면 오류를 기록하고 점검 시각은 그대로 둔다")
     fun markCheckFailed_records_error_and_keeps_checked_time() {
-        val project = Project("모꼬지", "mokkoji.kr")
+        val project = Project("예시 서비스", "example.com")
         val checkedAt = LocalDateTime.of(2026, 11, 16, 9, 0)
         project.markChecked(checkedAt)
 
@@ -71,7 +71,7 @@ class ProjectTest {
     @Test
     @DisplayName("알림에 성공하면 이전 알림 오류를 지운다")
     fun markNotifySucceeded_clears_error() {
-        val project = Project("모꼬지", "mokkoji.kr")
+        val project = Project("예시 서비스", "example.com")
         project.markNotifyFailed("실패")
 
         project.markNotifySucceeded()
@@ -82,7 +82,7 @@ class ProjectTest {
     @Test
     @DisplayName("알림에 실패하면 오류를 기록한다")
     fun markNotifyFailed_records_error() {
-        val project = Project("모꼬지", "mokkoji.kr")
+        val project = Project("예시 서비스", "example.com")
 
         project.markNotifyFailed("실패")
 

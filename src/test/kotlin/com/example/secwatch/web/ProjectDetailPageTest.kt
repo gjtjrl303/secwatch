@@ -44,7 +44,7 @@ class ProjectDetailPageTest : FakeExternalApiIntegrationTest() {
 
     @BeforeEach
     fun seed() {
-        project = projectRepository.save(Project("모꼬지", "mokkoji.example.com"))
+        project = projectRepository.save(Project("예시 서비스", "service.example.com"))
     }
 
     private fun saveFinding(
@@ -476,7 +476,7 @@ class ProjectDetailPageTest : FakeExternalApiIntegrationTest() {
             .andExpect(status().isNotFound)
         mockMvc.perform(post("/projects/999999/notification").param("webhookUrl", webhook))
             .andExpect(status().isNotFound)
-        mockMvc.perform(post("/projects/999999/site-scan-path").param("path", "/sejong"))
+        mockMvc.perform(post("/projects/999999/site-scan-path").param("path", "/app"))
             .andExpect(status().isNotFound)
         mockMvc.perform(post("/projects/999999/site-credentials").param("username", "scan-user").param("password", sitePassword))
             .andExpect(status().isNotFound)
@@ -501,10 +501,10 @@ class ProjectDetailPageTest : FakeExternalApiIntegrationTest() {
     @Test
     @DisplayName("시작 경로를 저장하면 설정 탭으로 돌아오고 입력칸에 저장한 경로가 보인다")
     fun saving_the_site_scan_path() {
-        mockMvc.perform(post("/projects/${project.id}/site-scan-path").param("path", "/sejong"))
+        mockMvc.perform(post("/projects/${project.id}/site-scan-path").param("path", "/app"))
             .andExpect(redirectedUrl("/projects/${project.id}?tab=settings"))
 
-        page("/projects/${project.id}?tab=settings").andExpect(content().string(containsString("value=\"/sejong\"")))
+        page("/projects/${project.id}?tab=settings").andExpect(content().string(containsString("value=\"/app\"")))
     }
 
     @Test

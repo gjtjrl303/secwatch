@@ -61,13 +61,13 @@ class SiteScanRunnerTest : FakeExternalApiIntegrationTest() {
     @Test
     @DisplayName("프로젝트에 저장한 시작 경로와 인증 정보를 점검 도구에 넘긴다")
     fun request_passes_the_start_path_and_credentials() {
-        projectManagement.changeSiteScanPath(projectId, "/sejong")
+        projectManagement.changeSiteScanPath(projectId, "/app")
         projectManagement.changeSiteCredentials(projectId, "user", "pw")
 
         awaitFinished(runner.request(projectId))
 
         val target = fakeSiteScanner.scanned.single()
-        assertThat(target.url).isEqualTo("http://localhost:3000/sejong")
+        assertThat(target.url).isEqualTo("http://localhost:3000/app")
         assertThat(target.credentials?.username).isEqualTo("user")
         assertThat(target.credentials?.password).isEqualTo("pw")
     }

@@ -24,14 +24,14 @@ class SiteScanSettingsTest {
     @Test
     @DisplayName("시작 경로는 앞뒤 공백을 지우고 그대로 쓴다")
     fun path_is_trimmed() {
-        assertThat(SiteScanSettings.path(" /sejong ")).isEqualTo("/sejong")
-        assertThat(SiteScanSettings.path("/sejong/club?page=1")).isEqualTo("/sejong/club?page=1")
+        assertThat(SiteScanSettings.path(" /app ")).isEqualTo("/app")
+        assertThat(SiteScanSettings.path("/app/board?page=1")).isEqualTo("/app/board?page=1")
     }
 
     @Test
     @DisplayName("/로 시작하지 않거나 다른 주소로 바뀔 수 있는 경로는 거부한다")
     fun path_that_could_leave_the_domain_is_rejected() {
-        listOf("sejong", "//evil.example.com", "/a b", "/x\ny", "https://evil.example.com", "/redirect?to=https://evil.example.com", "/" + "a".repeat(200))
+        listOf("app", "//evil.example.com", "/a b", "/x\ny", "https://evil.example.com", "/redirect?to=https://evil.example.com", "/" + "a".repeat(200))
             .forEach { raw -> assertThat(pathError(raw)).isEqualTo(ErrorCode.INVALID_SITE_SCAN_PATH) }
     }
 

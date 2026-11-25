@@ -60,11 +60,11 @@ class ZapDockerScannerTest {
     @Test
     @DisplayName("둘러보기는 시작 경로에서 시작하고, 점검 범위는 사이트 전체로 둔다")
     fun spider_starts_at_the_path_and_scope_is_the_whole_site() {
-        scanner("$writeReport; exit 0").scan(target("https://dev.example.com/sejong"))
+        scanner("$writeReport; exit 0").scan(target("https://dev.example.com/app"))
 
         val plan = Files.readString(planCopy)
         assertThat(plan).contains("urls:\n    - 'https://dev.example.com'\n")
-        assertThat(plan).contains("url: 'https://dev.example.com/sejong'")
+        assertThat(plan).contains("url: 'https://dev.example.com/app'")
     }
 
     @Test
@@ -96,14 +96,14 @@ class ZapDockerScannerTest {
     @Test
     @DisplayName("인증 정보가 있으면 둘러보기 전에 이 사이트로 가는 요청에만 Basic 인증 헤더를 붙인다")
     fun credentials_add_basic_auth_header_for_this_site_only() {
-        scanner("$writeReport; exit 0").scan(target("https://dev.example.com/sejong", credentials))
+        scanner("$writeReport; exit 0").scan(target("https://dev.example.com/app", credentials))
 
         val plan = Files.readString(planCopy)
         assertThat(plan).contains("type: replacer").contains("matchString: Authorization").contains("replacementString: 'Basic $basicToken'")
         assertThat(plan.indexOf("type: replacer")).isLessThan(plan.indexOf("type: spider"))
 
         val urlRegex = Regex(Regex("""url: '(\\Q.*)'""").find(plan)!!.groupValues[1])
-        assertThat(urlRegex.matches("https://dev.example.com/sejong")).isTrue()
+        assertThat(urlRegex.matches("https://dev.example.com/app")).isTrue()
         assertThat(urlRegex.matches("https://dev.example.com")).isTrue()
         assertThat(urlRegex.matches("https://dev.example.com?x=1")).isTrue()
         assertThat(urlRegex.matches("https://dev.example.com.evil.example.com/")).isFalse()
