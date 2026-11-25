@@ -102,4 +102,15 @@ class ProjectManagementTest : MySqlIntegrationTest() {
         assertThat(rawWebhook()).startsWith("v1:").doesNotContain("secret-token").doesNotContain("discord")
         assertThat(projectManagement.get(projectId).webhookUrl).isEqualTo("https://discord.com/api/webhooks/1/secret-token")
     }
+
+    @Test
+    @DisplayName("검사를 통과하는 가장 긴 웹훅 주소도 암호화해 저장하고 그대로 읽는다")
+    fun longest_allowed_webhook_fits_after_encryption() {
+        val prefix = "https://discord.com/api/webhooks/"
+        val longest = prefix + "가".repeat(500 - prefix.length)
+
+        projectManagement.changeWebhook(projectId, longest)
+
+        assertThat(projectManagement.get(projectId).webhookUrl).isEqualTo(longest)
+    }
 }
