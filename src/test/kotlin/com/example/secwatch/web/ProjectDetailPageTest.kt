@@ -451,7 +451,7 @@ class ProjectDetailPageTest : FakeExternalApiIntegrationTest() {
             .andExpect(status().is3xxRedirection)
             .andExpect(redirectedUrl("/projects/${project.id}?tab=settings"))
 
-        assertThat(jdbcTemplate.queryForObject("select webhook_url from project where id = ?", String::class.java, project.id)).isEqualTo(webhook)
+        assertThat(decrypted(jdbcTemplate.queryForObject("select webhook_url from project where id = ?", String::class.java, project.id))).isEqualTo(webhook)
         page()
             .andExpect(content().string(containsString("디스코드 알림 설정됨")))
             .andExpect(content().string(not(containsString("topsecret"))))
@@ -478,24 +478,15 @@ class ProjectDetailPageTest : FakeExternalApiIntegrationTest() {
             .andExpect(status().isNotFound)
         mockMvc.perform(post("/projects/999999/site-scan-path").param("path", "/app"))
             .andExpect(status().isNotFound)
-        mockMvc.perform(post("/projects/999999/site-credentials").param("username", "scan-user").param("password", sitePassword))
-            .andExpect(status().isNotFound)
-        mockMvc.perform(post("/projects/999999/site-credentials/delete"))
-            .andExpect(status().isNotFound)
     }
 
-    private val sitePassword = "topsecret-pw"
-
-    private fun storedSiteCredentials(): Map<String, Any?> =
-        jdbcTemplate.queryForMap("select site_auth_username, site_auth_password from project where id = ?", project.id)
-
     @Test
-    @DisplayName("설정 탭은 사이트 점검 시작 경로와 인증 폼을 보여준다")
+    @DisplayName("설정 탭은 사이트 점검 시작 경로 폼을 보여주고, 인증 정보를 저장하는 폼은 없다")
     fun settings_tab_shows_the_site_scan_forms() {
         page("/projects/${project.id}?tab=settings")
             .andExpect(content().string(containsString("action=\"/projects/${project.id}/site-scan-path\"")))
-            .andExpect(content().string(containsString("action=\"/projects/${project.id}/site-credentials\"")))
-            .andExpect(content().string(containsString("사이트 점검 인증 없음")))
+            .andExpect(content().string(not(containsString("site-credentials"))))
+            .andExpect(content().string(not(containsString("type=\"password\" id=\"sitePassword\""))))
     }
 
     @Test
@@ -518,42 +509,4 @@ class ProjectDetailPageTest : FakeExternalApiIntegrationTest() {
         assertThat(jdbcTemplate.queryForObject("select site_scan_path from project where id = ?", String::class.java, project.id)).isNull()
     }
 
-    @Test
-    @DisplayName("인증 정보를 저장하면 설정됨으로 바뀌고, 비밀번호는 화면과 API 어디에도 나오지 않는다")
-    fun saving_site_credentials_never_shows_the_password() {
-        mockMvc.perform(post("/projects/${project.id}/site-credentials").param("username", "scan-user").param("password", sitePassword))
-            .andExpect(redirectedUrl("/projects/${project.id}?tab=settings"))
-
-        assertThat(storedSiteCredentials()).containsEntry("site_auth_username", "scan-user").containsEntry("site_auth_password", sitePassword)
-        listOf("/projects/${project.id}?tab=settings", "/projects/${project.id}?tab=site", "/projects/${project.id}").forEach { path ->
-            page(path).andExpect(content().string(not(containsString(sitePassword))))
-        }
-        page("/projects/${project.id}?tab=settings").andExpect(content().string(containsString("사이트 점검 인증 설정됨")))
-        mockMvc.perform(get("/api/projects/${project.id}")).andExpect(content().string(not(containsString(sitePassword))))
-        mockMvc.perform(get("/api/projects")).andExpect(content().string(not(containsString(sitePassword))))
-    }
-
-    @Test
-    @DisplayName("틀린 인증 정보는 저장하지 않고 안내 문구만 보여주며 입력한 비밀번호를 되돌려 그리지 않는다")
-    fun invalid_site_credentials_are_rejected_without_echoing() {
-        mockMvc.perform(post("/projects/${project.id}/site-credentials").param("username", "a:b").param("password", sitePassword))
-            .andExpect(status().isOk)
-            .andExpect(model().attribute("tab", "settings"))
-            .andExpect(content().string(containsString("사이트 점검 인증 정보를 확인해주세요.")))
-            .andExpect(content().string(not(containsString(sitePassword))))
-
-        assertThat(storedSiteCredentials()).containsEntry("site_auth_username", null).containsEntry("site_auth_password", null)
-    }
-
-    @Test
-    @DisplayName("인증 정보를 지우면 설정 탭으로 돌아오고 없음으로 바뀐다")
-    fun clearing_site_credentials() {
-        mockMvc.perform(post("/projects/${project.id}/site-credentials").param("username", "scan-user").param("password", sitePassword))
-
-        mockMvc.perform(post("/projects/${project.id}/site-credentials/delete"))
-            .andExpect(redirectedUrl("/projects/${project.id}?tab=settings"))
-
-        assertThat(storedSiteCredentials()).containsEntry("site_auth_username", null).containsEntry("site_auth_password", null)
-        page("/projects/${project.id}?tab=settings").andExpect(content().string(containsString("사이트 점검 인증 없음")))
-    }
 }

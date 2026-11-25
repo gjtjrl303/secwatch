@@ -3,6 +3,7 @@ package com.example.secwatch.project
 import com.example.secwatch.common.ErrorCode
 import com.example.secwatch.common.SecwatchException
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -49,6 +50,18 @@ class SiteScanSettingsTest {
         assertThat(credentialsError("u\nser", "pw")).isEqualTo(ErrorCode.INVALID_SITE_CREDENTIALS)
         assertThat(credentialsError("a".repeat(101), "pw")).isEqualTo(ErrorCode.INVALID_SITE_CREDENTIALS)
         assertThat(credentialsError("user", "p".repeat(101))).isEqualTo(ErrorCode.INVALID_SITE_CREDENTIALS)
+    }
+
+    @Test
+    @DisplayName("점검할 때 아이디와 비밀번호를 둘 다 비우면 인증 없이 점검하고, 하나만 넣으면 거부한다")
+    fun optional_credentials_at_scan_time() {
+        assertThat(SiteScanSettings.optionalCredentials("", "")).isNull()
+        assertThat(SiteScanSettings.optionalCredentials("  ", "")).isNull()
+        assertThat(SiteScanSettings.optionalCredentials("user", "pw")?.password).isEqualTo("pw")
+        listOf("user" to "", "" to "pw").forEach { (username, password) ->
+            assertThatThrownBy { SiteScanSettings.optionalCredentials(username, password) }
+                .isInstanceOfSatisfying(SecwatchException::class.java) { assertThat(it.errorCode).isEqualTo(ErrorCode.INVALID_SITE_CREDENTIALS) }
+        }
     }
 
     @Test

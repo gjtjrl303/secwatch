@@ -26,8 +26,10 @@ class ProjectManagementTest : MySqlIntegrationTest() {
         projectId = jdbcTemplate.queryForObject("select id from project", Long::class.java)!!
     }
 
-    private fun storedWebhook() =
+    private fun rawWebhook(): String? =
         jdbcTemplate.queryForObject("select webhook_url from project where id = ?", String::class.java, projectId)
+
+    private fun storedWebhook() = decrypted(rawWebhook())
 
     @Test
     @DisplayName("등록된 프로젝트를 모두 돌려준다")
@@ -72,7 +74,7 @@ class ProjectManagementTest : MySqlIntegrationTest() {
     }
 
     private fun storedSiteScanColumns(): Map<String, Any?> =
-        jdbcTemplate.queryForMap("select site_scan_path, site_auth_username, site_auth_password from project where id = ?", projectId)
+        jdbcTemplate.queryForMap("select site_scan_path from project where id = ?", projectId)
 
     @Test
     @DisplayName("사이트 점검 시작 경로를 저장하고, 비우면 지운다")
@@ -93,22 +95,22 @@ class ProjectManagementTest : MySqlIntegrationTest() {
     }
 
     @Test
-    @DisplayName("사이트 점검 인증 정보를 저장하고 지운다")
-    fun changes_and_clears_site_credentials() {
-        projectManagement.changeSiteCredentials(projectId, "user", "pw")
-        assertThat(storedSiteScanColumns()).containsEntry("site_auth_username", "user").containsEntry("site_auth_password", "pw")
+    @DisplayName("웹훅 주소는 DB에 암호화해 저장하고, 읽을 때는 원래 값으로 돌려준다")
+    fun webhook_is_encrypted_in_the_database() {
+        projectManagement.changeWebhook(projectId, "https://discord.com/api/webhooks/1/secret-token")
 
-        projectManagement.clearSiteCredentials(projectId)
-        assertThat(storedSiteScanColumns()).containsEntry("site_auth_username", null).containsEntry("site_auth_password", null)
+        assertThat(rawWebhook()).startsWith("v1:").doesNotContain("secret-token").doesNotContain("discord")
+        assertThat(projectManagement.get(projectId).webhookUrl).isEqualTo("https://discord.com/api/webhooks/1/secret-token")
     }
 
     @Test
-    @DisplayName("틀린 인증 정보는 거부하고 이전 값을 그대로 둔다")
-    fun rejects_invalid_site_credentials() {
-        projectManagement.changeSiteCredentials(projectId, "user", "pw")
+    @DisplayName("검사를 통과하는 가장 긴 웹훅 주소도 암호화해 저장하고 그대로 읽는다")
+    fun longest_allowed_webhook_fits_after_encryption() {
+        val prefix = "https://discord.com/api/webhooks/"
+        val longest = prefix + "가".repeat(500 - prefix.length)
 
-        assertThatThrownBy { projectManagement.changeSiteCredentials(projectId, "user", "") }
-            .isInstanceOfSatisfying(SecwatchException::class.java) { assertThat(it.errorCode).isEqualTo(ErrorCode.INVALID_SITE_CREDENTIALS) }
-        assertThat(storedSiteScanColumns()).containsEntry("site_auth_username", "user").containsEntry("site_auth_password", "pw")
+        projectManagement.changeWebhook(projectId, longest)
+
+        assertThat(projectManagement.get(projectId).webhookUrl).isEqualTo(longest)
     }
 }

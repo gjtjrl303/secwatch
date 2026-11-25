@@ -26,7 +26,7 @@ class ProjectStaleUpdateTest : DbIntegrationTest() {
         }
 
         val row = jdbcTemplate.queryForMap("select last_checked_at, webhook_url from project where id = ?", projectId)
-        assertThat(row["webhook_url"]).isEqualTo("https://discord.com/api/webhooks/1/a")
+        assertThat(decrypted(row["webhook_url"])).isEqualTo("https://discord.com/api/webhooks/1/a")
         assertThat(row["last_checked_at"]).isNotNull
     }
 }

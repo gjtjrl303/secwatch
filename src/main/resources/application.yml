@@ -23,6 +23,8 @@ server:
     # 한도를 넘는 업로드를 끝까지 읽어야 연결이 끊기지 않고 안내 화면이 나간다. 이보다 큰 요청은 연결을 끊는다.
     max-swallow-size: 50MB
 secwatch:
+  # 웹훅 주소를 암호화하는 키(32바이트, Base64). 없으면 앱이 시작하지 않는다. README 참고.
+  encryption-key: ${SECWATCH_ENCRYPTION_KEY:}
   recheck:
     # 매일 재점검 시각(초 분 시 일 월 요일, Asia/Seoul 기준). "-"로 두면 끈다.
     cron: "0 0 9 * * *"

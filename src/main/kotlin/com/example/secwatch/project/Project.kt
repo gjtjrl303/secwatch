@@ -1,6 +1,8 @@
 package com.example.secwatch.project
 
+import com.example.secwatch.common.EncryptedStringConverter
 import jakarta.persistence.Column
+import jakarta.persistence.Convert
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
@@ -22,6 +24,7 @@ class Project(name: String, domain: String) {
     var domain: String = domain
         protected set
 
+    @Convert(converter = EncryptedStringConverter::class)
     @Column(name = "webhook_url")
     var webhookUrl: String? = null
         protected set
@@ -29,19 +32,6 @@ class Project(name: String, domain: String) {
     @Column(name = "site_scan_path")
     var siteScanPath: String? = null
         protected set
-
-    @Column(name = "site_auth_username")
-    private var siteAuthUsername: String? = null
-
-    @Column(name = "site_auth_password")
-    private var siteAuthPassword: String? = null
-
-    val siteCredentials: SiteCredentials?
-        get() {
-            val username = siteAuthUsername ?: return null
-            val password = siteAuthPassword ?: return null
-            return SiteCredentials(username, password)
-        }
 
     @Column(name = "last_checked_at")
     var lastCheckedAt: LocalDateTime? = null
@@ -71,16 +61,6 @@ class Project(name: String, domain: String) {
 
     fun changeSiteScanPath(path: String?) {
         siteScanPath = path
-    }
-
-    fun changeSiteCredentials(credentials: SiteCredentials) {
-        siteAuthUsername = credentials.username
-        siteAuthPassword = credentials.password
-    }
-
-    fun clearSiteCredentials() {
-        siteAuthUsername = null
-        siteAuthPassword = null
     }
 
     fun markChecked(checkedAt: LocalDateTime) {
